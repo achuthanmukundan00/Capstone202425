@@ -1,4 +1,5 @@
 <template>
+    <button @click="drawCircle">Draw Circle</button>
     <div ref="canvasContainer" style="width: 100%; height: 100%;"></div>
 </template>
 
@@ -50,6 +51,17 @@
     const resize = () => {
         if (app) {
             app.renderer.resize(window.innerWidth, window.innerHeight);
+        }
+    };
+
+    const drawCircle = () => {
+        if (app) {
+            const circle = new PIXI.Graphics()
+                .circle(Math.random() * app.canvas.width, Math.random() * app.canvas.height, 25) // Center at (0,0) with radius 50
+                .fill(0x01949a);
+
+            // Add the circle to the stage
+            app.stage.addChild(circle);
         }
     };
 </script>
