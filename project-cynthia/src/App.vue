@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
+  import PixiCanvas from './components/PixiCanvas.vue';
 </script>
 
 <template>
-  <RouterView />
+   <div id="app">
+    <PixiCanvas />
+  </div>
 </template>
 
-<style scoped>
-/* Add any necessary global styles here or keep it empty */
+<style>
+  body {
+    margin: 0;
+  }
 </style>

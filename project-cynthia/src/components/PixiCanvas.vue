@@ -1,0 +1,67 @@
+<template>
+    <div ref="canvasContainer" style="width: 100%; height: 100%;"></div>
+</template>
+
+<script setup lang="ts">
+    import { ref, onMounted, onBeforeUnmount } from 'vue';
+    import * as PIXI from 'pixi.js';
+
+    const canvasContainer = ref<HTMLElement | null>(null);
+    let app: PIXI.Application | null = null;
+
+    onMounted(async () => {
+        // Initialize PixiJS Application
+        app = new PIXI.Application();
+        await app.init({
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+
+        // Append the canvas to the container
+        if (canvasContainer.value && app.canvas) {
+            canvasContainer.value.appendChild(app.canvas);
+        }
+
+        // Prevent the page from scrolling 
+        app.canvas.style.position = 'absolute';
+
+        // Resize the canvas if the window is resized
+        window.addEventListener('resize', resize);
+
+        // Draw a rectangle
+        const rectangle = new PIXI.Graphics()
+            .rect(200, 200, 150, 100)
+            .fill({
+                color: 0xdb1f48
+            })
+        app.stage.addChild(rectangle);
+
+        // Someone else can try drawing a shape here and following the same technique.
+    });
+
+    onBeforeUnmount(() => {
+        if (app) {
+            app.destroy(true, { children: true });
+            app = null;
+        }
+        window.removeEventListener('resize', resize);
+    });
+
+    const resize = () => {
+        if (app) {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+        }
+    };
+</script>
+
+<style scoped>
+    /* Set the component to take full screen for visibility */
+    html, body, #app, .canvas-container {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    }
+</style>
+  
