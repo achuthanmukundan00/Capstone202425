@@ -1,5 +1,5 @@
 <template>
-    <button @click="drawCircle">Draw Circle</button>
+    <button @click="drawCircle">Click me</button>
     <div ref="canvasContainer" style="width: 100%; height: 100%;"></div>
 </template>
 
