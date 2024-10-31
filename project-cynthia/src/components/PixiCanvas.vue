@@ -1,6 +1,5 @@
 <template>
-    <button @click="drawCircle">Click me</button>
-    <div ref="canvasContainer" style="width: 100%; height: 100%;"></div>
+    <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container"></div>
 </template>
 
 <script setup lang="ts">
@@ -24,7 +23,7 @@
         }
 
         // Prevent the page from scrolling 
-        app.canvas.style.position = 'absolute';
+        //app.canvas.style.position = 'absolute';
 
         // Resize the canvas if the window is resized
         window.addEventListener('resize', resize);
@@ -67,13 +66,10 @@
 </script>
 
 <style scoped>
-    /* Set the component to take full screen for visibility */
-    html, body, #app, .canvas-container {
-    margin: 0;
-    padding: 0;
+  .canvas-container {
+    flex-grow: 1;
+    height: 100%; /* Ensures it takes full height */
     overflow: hidden;
-    width: 100vw;
-    height: 100vh;
-    }
+  }
 </style>
   
