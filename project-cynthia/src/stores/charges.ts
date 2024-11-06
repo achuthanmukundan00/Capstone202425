@@ -27,6 +27,12 @@ export const useChargesStore = defineStore('charges', {
         position: { x: 400, y: 300 } // Place charge in center of canvas initially
       };
       this.charges.push(newCharge);
-    }
+    },
+    updateChargePosition(id: string, newPosition: { x: number; y: number }) {
+      const charge = this.charges.find(c => c.id === id);
+      if (charge) {
+          charge.position = newPosition;
+      }
+  }
   }
 }); 
