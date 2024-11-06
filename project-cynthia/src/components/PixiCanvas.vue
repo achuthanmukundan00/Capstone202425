@@ -3,74 +3,74 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
-    import * as PIXI from 'pixi.js';
-    import type { Charge } from '@/stores/charges';
-    import { useChargesStore } from '@/stores/charges';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import * as PIXI from 'pixi.js';
+import type { Charge } from '@/stores/charges';
+import { useChargesStore } from '@/stores/charges';
 
-    const canvasContainer = ref<HTMLElement | null>(null);
-    const chargesStore = useChargesStore();
-    const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
+const canvasContainer = ref<HTMLElement | null>(null);
+const chargesStore = useChargesStore();
+const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
 
-    let app: PIXI.Application | null = null;
+let app: PIXI.Application | null = null;
 
-    onMounted(async () => {
-        // Initialize PixiJS Application
-        app = new PIXI.Application();
-        await app.init({
-            width: window.innerWidth,
-            height: window.innerHeight
-        });
-
-        // Append the canvas to the container
-        if (canvasContainer.value && app.canvas) {
-            canvasContainer.value.appendChild(app.canvas);
-        }
-
-        // Prevent the page from scrolling 
-        //app.canvas.style.position = 'absolute';
-
-        // Resize the canvas if the window is resized
-        window.addEventListener('resize', resize);
-
-        // Watch for changes in the charges array
-        watch(
-            () => chargesStore.charges,
-            (newCharges) => {
-                updateChargesOnCanvas(newCharges);
-            },
-            { deep: true, immediate: true }
-        );
-
-        // Someone else can try drawing a shape here and following the same technique.
+onMounted(async () => {
+    // Initialize PixiJS Application
+    app = new PIXI.Application();
+    await app.init({
+        width: window.innerWidth,
+        height: window.innerHeight
     });
 
-    onBeforeUnmount(() => {
-        if (app) {
-            app.destroy(true, { children: true });
-            app = null;
-        }
-        window.removeEventListener('resize', resize);
-    });
+    // Append the canvas to the container
+    if (canvasContainer.value && app.canvas) {
+        canvasContainer.value.appendChild(app.canvas);
+    }
 
-    const resize = () => {
-        if (app) {
-            app.renderer.resize(window.innerWidth, window.innerHeight);
-        }
-    };
+    // Prevent the page from scrolling 
+    //app.canvas.style.position = 'absolute';
 
-    const drawCircle = () => {
-        if (app) {
-            const circle = new PIXI.Graphics()
-                .circle(Math.random() * app.canvas.width, Math.random() * app.canvas.height, 25) // Center at (0,0) with radius 50
-                .fill(0x01949a);
+    // Resize the canvas if the window is resized
+    window.addEventListener('resize', resize);
 
-            // Add the circle to the stage
-            app.stage.addChild(circle);
-        }
-    };
+    // Watch for changes in the charges array
+    watch(
+        () => chargesStore.charges,
+        (newCharges) => {
+            updateChargesOnCanvas(newCharges);
+        },
+        { deep: true, immediate: true }
+    );
 
-    const updateChargesOnCanvas = (charges: Charge[]) => {
+    // Someone else can try drawing a shape here and following the same technique.
+});
+
+onBeforeUnmount(() => {
+    if (app) {
+        app.destroy(true, { children: true });
+        app = null;
+    }
+    window.removeEventListener('resize', resize);
+});
+
+const resize = () => {
+    if (app) {
+        app.renderer.resize(window.innerWidth, window.innerHeight);
+    }
+};
+
+const drawCircle = () => {
+    if (app) {
+        const circle = new PIXI.Graphics()
+            .circle(Math.random() * app.canvas.width, Math.random() * app.canvas.height, 25) // Center at (0,0) with radius 50
+            .fill(0x01949a);
+
+        // Add the circle to the stage
+        app.stage.addChild(circle);
+    }
+};
+
+const updateChargesOnCanvas = (charges: Charge[]) => {
     if (!app) return;
 
     // Remove graphics for charges that no longer exist
@@ -113,9 +113,14 @@
                     if (graphic!.dragging) {
                         const newPosition = graphic!.data.getLocalPosition(graphic!.parent);
                         graphic!.position.set(newPosition.x, newPosition.y);
+
+                        // Update the position in the store
+                        chargesStore.updateChargePosition(charge.id, {
+                            x: newPosition.x,
+                            y: newPosition.y,
+                        });
                     }
                 });
-
         } else {
             // Clear the graphic to redraw
             graphic.clear();
@@ -129,17 +134,38 @@
         graphic.drawCircle(0, 0, 20); // Draw at (0,0) because we'll set the position
         graphic.endFill();
 
-        // Set position
+        // Set position based on the store data, so it persists even after adding a new charge
         graphic.position.set(charge.position.x, charge.position.y);
+
+        // Create or update the text label for the charge magnitude
+        let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
+        if (!text) {
+            text = new PIXI.Text(charge.magnitude.toString() + 'C', {
+                fontSize: 14,
+                fill: 0xffffff, // White text color for visibility
+                align: 'center'
+            });
+            text.name = 'chargeLabel';
+            graphic.addChild(text);
+        } else {
+            // Update the text if the magnitude has changed
+            text.text = charge.magnitude.toString() + 'C';
+        }
+
+        // Center the text within the circle
+        text.anchor.set(0.5); // Centers the text
+        text.position.set(0, 0); // Position text at the center of the circle
     });
 };
+
+
 </script>
 
 <style scoped>
-  .canvas-container {
+.canvas-container {
     flex-grow: 1;
-    height: 100%; /* Ensures it takes full height */
+    height: 100%;
+    /* Ensures it takes full height */
     overflow: hidden;
-  }
+}
 </style>
-  

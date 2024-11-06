@@ -12,7 +12,7 @@
       <form @submit.prevent="handleAddCharge">
         <!-- Magnitude input field -->
         <div class="form-group">
-          <label for="q">Magnitude (Q):</label>
+          <label for="q">Magnitude (C):</label>
           <input 
             type="number" 
             id="q" 
