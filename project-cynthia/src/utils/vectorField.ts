@@ -6,23 +6,16 @@ const FIELD_SPACING = 64; // Spacing between field vectors in pixels
 const VECTOR_LENGTH_SCALE = 20; // Scaling factor for vector length
 const ARROWHEAD_LENGTH = 8; // Length of the arrowhead
 
-export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
-    console.log('Called drawElectricField');
-    
+export function drawElectricField(app: PIXI.Application, charges: Charge[]) {    
     // Clear existing field graphics
     app.stage.children
         .filter(child => child.name === 'fieldVector')
         .forEach(child => app.stage.removeChild(child));
-
-    console.log(`Canvas size: ${app.screen.width} x ${app.screen.height}`);
-    console.log(`Vector length scale: ${VECTOR_LENGTH_SCALE}`);
         
     // Generate field vectors across a grid
     for (let x = 0; x < app.screen.width; x += FIELD_SPACING) {
         for (let y = 0; y < app.screen.height; y += FIELD_SPACING) {
             let fieldVector = { x: 0, y: 0 };
-            console.log('Field vector: ', fieldVector)
-
             charges.forEach(charge => {
                 const chargeField = calculateElectricField(
                     charge.position,
@@ -36,9 +29,6 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
 
             // Scale and normalize the field vector
             const normalizedVector = normalizeAndScale(fieldVector, VECTOR_LENGTH_SCALE);
-
-            // Log to check if vectors are calculated correctly
-            console.log(`Field vector at (${x}, ${y}):`, normalizedVector);
 
             // Draw the vector as an arrow
             const arrow = new PIXI.Graphics();
