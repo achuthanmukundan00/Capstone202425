@@ -3,8 +3,9 @@ import { calculateElectricField, normalizeAndScale } from './mathUtils';
 import type { Charge } from '@/stores/charges';
 
 const FIELD_SPACING = 64; // Spacing between field vectors in pixels
-const VECTOR_LENGTH_SCALE = 20; // Scaling factor for vector length
+const VECTOR_LENGTH_SCALE = 5; // Scaling factor for vector length
 const ARROWHEAD_LENGTH = 8; // Length of the arrowhead
+const MAX_VECTOR_LENGTH = 30; // Maximum length for the vectors (to prevent too long arrows)
 
 export function drawElectricField(app: PIXI.Application, charges: Charge[]) {    
     // Clear existing field graphics
@@ -27,8 +28,15 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
                 fieldVector.y += chargeField.y;
             });
 
-            // Scale and normalize the field vector
-            const normalizedVector = normalizeAndScale(fieldVector, VECTOR_LENGTH_SCALE);
+            // Calculate the magnitude of the field vector
+            const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2);
+
+            // Scale the vector length based on the field strength
+            const length = Math.min(magnitude * VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH);
+            const normalizedVector = {
+                x: (fieldVector.x / magnitude) * length,
+                y: (fieldVector.y / magnitude) * length
+            };
 
             // Draw the vector as an arrow
             const arrow = new PIXI.Graphics();
