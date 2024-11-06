@@ -3,56 +3,74 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
-import * as PIXI from 'pixi.js';
-import { useChargesStore } from '@/stores/charges';
-import type { Charge } from '@/stores/charges';
+    import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+    import * as PIXI from 'pixi.js';
+    import type { Charge } from '@/stores/charges';
+    import { useChargesStore } from '@/stores/charges';
 
-const canvasContainer = ref<HTMLElement | null>(null);
-let app: PIXI.Application | null = null;
-const chargesStore = useChargesStore();
-const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
+    const canvasContainer = ref<HTMLElement | null>(null);
+    const chargesStore = useChargesStore();
+    const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
 
-onMounted(async () => {
-    // Initialize PixiJS Application
-    app = new PIXI.Application({
-        width: window.innerWidth,
-        height: window.innerHeight
+    let app: PIXI.Application | null = null;
+
+    onMounted(async () => {
+        // Initialize PixiJS Application
+        app = new PIXI.Application();
+        await app.init({
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+
+        // Append the canvas to the container
+        if (canvasContainer.value && app.canvas) {
+            canvasContainer.value.appendChild(app.canvas);
+        }
+
+        // Prevent the page from scrolling 
+        //app.canvas.style.position = 'absolute';
+
+        // Resize the canvas if the window is resized
+        window.addEventListener('resize', resize);
+
+        // Watch for changes in the charges array
+        watch(
+            () => chargesStore.charges,
+            (newCharges) => {
+                updateChargesOnCanvas(newCharges);
+            },
+            { deep: true, immediate: true }
+        );
+
+        // Someone else can try drawing a shape here and following the same technique.
     });
 
-    // Append the canvas to the container
-    if (canvasContainer.value && app.view) {
-        canvasContainer.value.appendChild(app.view);
-    }
+    onBeforeUnmount(() => {
+        if (app) {
+            app.destroy(true, { children: true });
+            app = null;
+        }
+        window.removeEventListener('resize', resize);
+    });
 
-    // Resize the canvas if the window is resized
-    window.addEventListener('resize', resize);
+    const resize = () => {
+        if (app) {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+        }
+    };
 
-    // Watch for changes in the charges array
-    watch(
-        () => chargesStore.charges,
-        (newCharges) => {
-            updateChargesOnCanvas(newCharges);
-        },
-        { deep: true, immediate: true }
-    );
-});
+    const drawCircle = () => {
+        if (app) {
+            const circle = new PIXI.Graphics()
+                .circle(Math.random() * app.canvas.width, Math.random() * app.canvas.height, 25) // Center at (0,0) with radius 50
+                .fill(0x01949a);
 
-onBeforeUnmount(() => {
-    if (app) {
-        app.destroy(true, { children: true });
-        app = null;
-    }
-    window.removeEventListener('resize', resize);
-});
+            // Add the circle to the stage
+            app.stage.addChild(circle);
+        }
+    };
 
-const resize = () => {
-    if (app) {
-        app.renderer.resize(window.innerWidth, window.innerHeight);
-    }
-};
-
-const updateChargesOnCanvas = (charges: Charge[]) => {
+    const updateChargesOnCanvas = (charges: Charge[]) => {
     if (!app) return;
 
     // Remove graphics for charges that no longer exist
@@ -69,18 +87,15 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
         if (!graphic) {
             // Create a new graphic if it doesn't exist
-            graphic = new PIXI.Graphics()
+            graphic = new PIXI.Graphics();
             chargesGraphics.set(charge.id, graphic);
-            app!.stage.addChild(graphic);
+            app?.stage.addChild(graphic);
 
             // Enable interactivity
             graphic.interactive = true;
             graphic.buttonMode = true;
 
-            // Closure to capture charge ID
-            const chargeId = charge.id;
-
-            // Event handlers
+            // Event handlers for dragging
             graphic
                 .on('pointerdown', (event) => {
                     graphic!.data = event.data;
@@ -97,10 +112,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
                 .on('pointermove', () => {
                     if (graphic!.dragging) {
                         const newPosition = graphic!.data.getLocalPosition(graphic!.parent);
-                        graphic!.position.x = newPosition.x;
-                        graphic!.position.y = newPosition.y;
-
-                        // Update the position in the store as needed
+                        graphic!.position.set(newPosition.x, newPosition.y);
                     }
                 });
 
@@ -124,10 +136,10 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 </script>
 
 <style scoped>
-.canvas-container {
+  .canvas-container {
     flex-grow: 1;
-    height: 100%;
-    /* Ensures it takes full height */
+    height: 100%; /* Ensures it takes full height */
     overflow: hidden;
-}
+  }
 </style>
+  
