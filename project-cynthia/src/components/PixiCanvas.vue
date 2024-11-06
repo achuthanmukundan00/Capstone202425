@@ -7,6 +7,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { useChargesStore } from '@/stores/charges';
+import { drawElectricField } from '@/utils/vectorField';
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
@@ -38,6 +39,7 @@ onMounted(async () => {
         () => chargesStore.charges,
         (newCharges) => {
             updateChargesOnCanvas(newCharges);
+            drawElectricField(app!, newCharges); // Draw electric field after updating charges
         },
         { deep: true, immediate: true }
     );
@@ -56,8 +58,10 @@ onBeforeUnmount(() => {
 const resize = () => {
     if (app) {
         app.renderer.resize(window.innerWidth, window.innerHeight);
+        drawElectricField(app, chargesStore.charges); // Redraw electric field on resize
     }
 };
+
 
 const drawCircle = () => {
     if (app) {
@@ -113,12 +117,8 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
                     if (graphic!.dragging) {
                         const newPosition = graphic!.data.getLocalPosition(graphic!.parent);
                         graphic!.position.set(newPosition.x, newPosition.y);
-
-                        // Update the position in the store
-                        chargesStore.updateChargePosition(charge.id, {
-                            x: newPosition.x,
-                            y: newPosition.y,
-                        });
+                        chargesStore.updateChargePosition(charge.id, { x: newPosition.x, y: newPosition.y });
+                        drawElectricField(app!, chargesStore.charges); // Redraw field on drag
                     }
                 });
         } else {
