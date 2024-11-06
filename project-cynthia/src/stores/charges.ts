@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 
 // Define the structure of a charge object
-interface Charge {
+export interface Charge {
   id: string;          // Unique identifier for each charge
   magnitude: number;    // Strength of the charge (Q)
   polarity: 'positive' | 'negative';  // Whether it's a positive or negative charge
