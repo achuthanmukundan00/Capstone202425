@@ -33,7 +33,7 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
             // Draw the vector as an arrow
             const arrow = new PIXI.Graphics();
             arrow.name = 'fieldVector';
-            arrow.lineStyle(2, 0xffffff, 1); // Red color for better visibility
+            arrow.lineStyle(2, 0xffffff, 1);
 
             // Draw main line for the vector
             arrow.moveTo(x, y);
@@ -55,7 +55,7 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
                 endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6)
             );
 
-            arrow.beginFill(0xffffff); // Blue color for test rectangles
+            arrow.beginFill(0xffffff);
             arrow.endFill();
 
             // Add the arrow to the stage
