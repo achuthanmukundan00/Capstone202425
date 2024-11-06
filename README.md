@@ -1,6 +1,6 @@
 Just decided to create the README file. We can change this later. To practice git we can just sign our names here lolol
 
-Justin, Son
+Justin, Son, Mehdi
 
 to run the website:
 1. cd project-cynthia
