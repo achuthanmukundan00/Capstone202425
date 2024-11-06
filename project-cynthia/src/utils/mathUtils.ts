@@ -1,5 +1,4 @@
-// Coulomb constant (N·m²/C²)
-export const K = 8.9875517923e9;
+import { K } from '../consts'
 
 // Calculate electric field at a given point due to a charge
 export function calculateElectricField(chargePosition: { x: number; y: number }, chargeMagnitude: number, point: { x: number; y: number }, isPositive: boolean) {
