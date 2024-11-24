@@ -12,7 +12,8 @@ export interface Charge {
 export const useChargesStore = defineStore('charges', {
   // Initial state of the store
   state: () => ({
-    charges: [] as Charge[] // Array to hold all charges in the simulation
+    charges: [] as Charge[], // Array to hold all charges in the simulation
+    selectedChargeId: null as string | null,
   }),
   
   // Actions that can be performed on the store
@@ -28,11 +29,17 @@ export const useChargesStore = defineStore('charges', {
       };
       this.charges.push(newCharge);
     },
+    removeCharge(chargeId: string) {
+      this.charges = this.charges.filter(charge => charge.id !== chargeId);
+    },
     updateChargePosition(id: string, newPosition: { x: number; y: number }) {
       const charge = this.charges.find(c => c.id === id);
       if (charge) {
           charge.position = newPosition;
       }
-  }
+    },
+    setSelectedCharge(id: string | null) {
+      this.selectedChargeId = id;
+    },
   }
 }); 

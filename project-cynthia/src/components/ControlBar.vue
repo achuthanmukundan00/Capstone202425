@@ -56,6 +56,11 @@
           Add Charge
         </button>
       </form>
+
+      <!-- delete button - disabled when form is invalid -->
+      <button type="button" class="submit-button" :disabled="!selectedChargeExists" @click="handleDeleteCharge">
+          Delete Charge
+      </button>
     </div>
 
     <!-- Debug section to show current charges in store -->
@@ -95,6 +100,18 @@ const handleAddCharge = () => {
   // Reset form after submission
   chargeValue.value = '';
 };
+
+const selectedChargeExists = computed(() => {
+  return chargesStore.selectedChargeId !== null;
+});
+
+// Handle deleting a charge
+const handleDeleteCharge = () => {
+  if (chargesStore.selectedChargeId !== null) {
+    chargesStore.removeCharge(chargesStore.selectedChargeId);
+    chargesStore.selectedChargeId = null;
+  }
+}
 </script>
 
 <style scoped>

@@ -99,6 +99,11 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
             graphic.interactive = true;
             graphic.buttonMode = true;
 
+            // Event handlers for selection
+            graphic.on('pointerdown', () => {
+                chargesStore.setSelectedCharge(charge.id);
+            });
+
             // Event handlers for dragging
             graphic
                 .on('pointerdown', (event) => {
@@ -129,10 +134,27 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
         // Set color based on polarity
         const color = charge.polarity === 'positive' ? 0xff0000 : 0x0000ff; // Red for positive, blue for negative
         const polarity = charge.polarity === 'positive' ? "+" : "-";
-        // Draw the charge as a circle
-        graphic.beginFill(color);
-        graphic.drawCircle(0, 0, 20); // Draw at (0,0) because we'll set the position
-        graphic.endFill();
+
+        // Do shit if the charge is selected
+        const isSelected = charge.id === chargesStore.selectedChargeId;
+        if (isSelected) {
+            console.log("hi");
+            // Draw the border
+            graphic.lineStyle(4, 0xffffff); // White border, 10px thick
+            graphic.drawCircle(0, 0, 24);    // Draw border slightly larger
+            graphic.lineStyle(0);           // Reset line style after border
+            
+            // Draw the inner circle
+            graphic.beginFill(color);       // Set the fill color
+            graphic.drawCircle(0, 0, 20);   // Draw inner circle slightly smaller
+            graphic.endFill();              // End the fill
+        } else {
+            // Draw the normal circle
+            graphic.beginFill(color);       // Set the fill color
+            graphic.lineStyle(0);           // Ensure no border
+            graphic.drawCircle(0, 0, 20);   // Draw normal circle
+            graphic.endFill();              // End the fill
+        }
 
         // Set position based on the store data, so it persists even after adding a new charge
         graphic.position.set(charge.position.x, charge.position.y);
