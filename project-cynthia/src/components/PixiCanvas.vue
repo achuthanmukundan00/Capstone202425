@@ -128,7 +128,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
         // Set color based on polarity
         const color = charge.polarity === 'positive' ? 0xff0000 : 0x0000ff; // Red for positive, blue for negative
-
+        const polarity = charge.polarity === 'positive' ? "+" : "-";
         // Draw the charge as a circle
         graphic.beginFill(color);
         graphic.drawCircle(0, 0, 20); // Draw at (0,0) because we'll set the position
@@ -140,7 +140,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
         // Create or update the text label for the charge magnitude
         let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
         if (!text) {
-            text = new PIXI.Text(charge.magnitude.toString() + 'C', {
+            text = new PIXI.Text(polarity + charge.magnitude.toString() + 'C', {
                 fontSize: 14,
                 fill: 0xffffff, // White text color for visibility
                 align: 'center'
@@ -149,9 +149,9 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
             graphic.addChild(text);
         } else {
             // Update the text if the magnitude has changed
-            text.text = charge.magnitude.toString() + 'C';
+            text.text = polarity + charge.magnitude.toString() + 'C';
         }
-
+            
         // Center the text within the circle
         text.anchor.set(0.5); // Centers the text
         text.position.set(0, 0); // Position text at the center of the circle
