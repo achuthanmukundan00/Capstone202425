@@ -41,5 +41,16 @@ export const useChargesStore = defineStore('charges', {
     setSelectedCharge(id: string | null) {
       this.selectedChargeId = id;
     },
+    updateCharge(updatedCharge: Partial<Charge> & { id: string }) {
+      const charge = this.charges.find(c => c.id === updatedCharge.id);
+      if (charge) {
+        if (updatedCharge.magnitude !== undefined) {
+          charge.magnitude = updatedCharge.magnitude;
+        }
+        if (updatedCharge.polarity !== undefined) {
+          charge.polarity = updatedCharge.polarity;
+        }
+      }
+    },
   }
 }); 

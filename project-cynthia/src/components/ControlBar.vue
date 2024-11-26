@@ -8,9 +8,7 @@
     <!-- Charge creation form container -->
     <div class="charge-container">
       <h2 class="section-title">Add Charge</h2>
-      <!-- Form with prevent default to handle submission -->
       <form @submit.prevent="handleAddCharge">
-        <!-- Magnitude input field -->
         <div class="form-group">
           <label for="q">Magnitude (C):</label>
           <input 
@@ -23,12 +21,9 @@
             placeholder="Enter charge magnitude"
           >
         </div>
-
-        <!-- Polarity selection radio buttons -->
         <div class="form-group">
           <label class="polarity-label">Polarity:</label>
           <div class="polarity-options">
-            <!-- Positive charge option -->
             <label class="radio-label">
               <input 
                 type="radio" 
@@ -38,7 +33,6 @@
               >
               <span class="radio-text positive">+</span>
             </label>
-            <!-- Negative charge option -->
             <label class="radio-label">
               <input 
                 type="radio" 
@@ -50,20 +44,61 @@
             </label>
           </div>
         </div>
-        
-        <!-- Submit button - disabled when form is invalid -->
         <button type="submit" class="submit-button" :disabled="!isValid">
           Add Charge
         </button>
       </form>
-
-      <!-- delete button - disabled when form is invalid -->
       <button type="button" class="submit-button" :disabled="!selectedChargeExists" @click="handleDeleteCharge">
           Delete Charge
       </button>
     </div>
 
-    <!-- Debug section to show current charges in store -->
+    <!-- Edit charge form -->
+    <div v-if="selectedChargeExists" class="edit-container">
+      <h2 class="section-title">Edit Charge</h2>
+      <form @submit.prevent="handleEditCharge">
+        <div class="form-group">
+          <label for="editMagnitude">Magnitude (C):</label>
+          <input 
+            type="number" 
+            id="editMagnitude" 
+            v-model="editChargeValue"
+            min="0"
+            step="0.1"
+            class="input-field"
+            placeholder="Enter new magnitude"
+          >
+        </div>
+        <div class="form-group">
+          <label class="polarity-label">Polarity:</label>
+          <div class="polarity-options">
+            <label class="radio-label">
+              <input 
+                type="radio" 
+                v-model="editPolarity" 
+                value="positive"
+                name="editPolarity"
+              >
+              <span class="radio-text positive">+</span>
+            </label>
+            <label class="radio-label">
+              <input 
+                type="radio" 
+                v-model="editPolarity" 
+                value="negative"
+                name="editPolarity"
+              >
+              <span class="radio-text negative">−</span>
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="submit-button" :disabled="!isEditValid">
+          Update Charge
+        </button>
+      </form>
+    </div>
+
+    <!-- Debug section moved below edit form -->
     <div class="debug-section">
       <h3>Debug: Charges in Store</h3>
       <pre>{{ chargesStore.charges }}</pre>
@@ -112,6 +147,29 @@ const handleDeleteCharge = () => {
     chargesStore.selectedChargeId = null;
   }
 }
+
+// State for editing charge
+const editChargeValue = ref<string>('');
+const editPolarity = ref<'positive' | 'negative'>('positive');
+
+// Computed property to check if edit form input is valid
+const isEditValid = computed(() => {
+  return editChargeValue.value !== '' && !isNaN(Number(editChargeValue.value));
+});
+
+// Handler for editing a charge
+const handleEditCharge = () => {
+  if (!isEditValid.value || !selectedChargeExists.value) return;
+
+  chargesStore.updateCharge({
+    id: chargesStore.selectedChargeId!,
+    magnitude: Number(editChargeValue.value),
+    polarity: editPolarity.value
+  });
+
+  // Optionally reset edit form after submission
+  editChargeValue.value = '';
+};
 </script>
 
 <style scoped>
@@ -119,10 +177,11 @@ const handleDeleteCharge = () => {
 .controls-container {
   width: 300px;
   background-color: white;
-  height: 100%;
+  height: 100vh;
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 /* Logo styling */
