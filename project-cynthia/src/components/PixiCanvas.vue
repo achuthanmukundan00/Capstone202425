@@ -34,6 +34,16 @@ onMounted(async () => {
     // Resize the canvas if the window is resized
     window.addEventListener('resize', resize);
 
+    // Add click handler to the stage for deselection
+    app.stage.interactive = true;
+    app.stage.hitArea = app.screen;
+    app.stage.on('pointerdown', (event) => {
+        // Only deselect if clicking directly on the stage (not on a charge)
+        if (event.target === app.stage) {
+            chargesStore.setSelectedCharge(null);
+        }
+    });
+
     // Watch for changes in the charges array
     watch(
         () => chargesStore.charges,
@@ -43,8 +53,6 @@ onMounted(async () => {
         },
         { deep: true, immediate: true }
     );
-
-    // Someone else can try drawing a shape here and following the same technique.
 });
 
 onBeforeUnmount(() => {
@@ -137,24 +145,13 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
         // Do shit if the charge is selected
         const isSelected = charge.id === chargesStore.selectedChargeId;
-        if (isSelected) {
-            console.log("hi");
-            // Draw the border
-            graphic.lineStyle(4, 0xffffff); // White border, 10px thick
-            graphic.drawCircle(0, 0, 24);    // Draw border slightly larger
-            graphic.lineStyle(0);           // Reset line style after border
-            
-            // Draw the inner circle
-            graphic.beginFill(color);       // Set the fill color
-            graphic.drawCircle(0, 0, 20);   // Draw inner circle slightly smaller
-            graphic.endFill();              // End the fill
-        } else {
+
             // Draw the normal circle
             graphic.beginFill(color);       // Set the fill color
             graphic.lineStyle(0);           // Ensure no border
             graphic.drawCircle(0, 0, 20);   // Draw normal circle
             graphic.endFill();              // End the fill
-        }
+        
 
         // Set position based on the store data, so it persists even after adding a new charge
         graphic.position.set(charge.position.x, charge.position.y);

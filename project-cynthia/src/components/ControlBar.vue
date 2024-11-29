@@ -1,319 +1,251 @@
 <template>
   <div class="controls-container">
-    <!-- Application logo -->
     <div class="logo">
       Cynthia.EM
     </div>
 
-    <!-- Charge creation form container -->
-    <div class="charge-container">
-      <h2 class="section-title">Add Charge</h2>
-      <form @submit.prevent="handleAddCharge">
-        <div class="form-group">
-          <label for="q">Magnitude (C):</label>
-          <input 
-            type="number" 
-            id="q" 
-            v-model="chargeValue"
-            min="0"
-            step="0.1"
-            class="input-field"
-            placeholder="Enter charge magnitude"
-          >
+    <div class="charge-form">
+      <div class="form-group">
+        <label for="magnitude">Magnitude (C):</label>
+        <input 
+          type="number" 
+          id="magnitude" 
+          v-model="chargeValue"
+          :disabled="isEditing && !selectedChargeExists"
+          placeholder="Enter magnitude"
+          min="0"
+          step="0.1"
+          class="input-field"
+        />
+      </div>
+
+      <div class="form-group">
+        <label>Polarity:</label>
+        <div class="polarity-controls">
+          <label>
+            <input 
+              type="radio" 
+              v-model="polarity" 
+              value="positive"
+              :disabled="isEditing && !selectedChargeExists"
+            />
+            Positive (+)
+          </label>
+          <label>
+            <input 
+              type="radio" 
+              v-model="polarity" 
+              value="negative"
+              :disabled="isEditing && !selectedChargeExists"
+            />
+            Negative (-)
+          </label>
         </div>
-        <div class="form-group">
-          <label class="polarity-label">Polarity:</label>
-          <div class="polarity-options">
-            <label class="radio-label">
-              <input 
-                type="radio" 
-                v-model="polarity" 
-                value="positive"
-                name="polarity"
-              >
-              <span class="radio-text positive">+</span>
-            </label>
-            <label class="radio-label">
-              <input 
-                type="radio" 
-                v-model="polarity" 
-                value="negative"
-                name="polarity"
-              >
-              <span class="radio-text negative">−</span>
-            </label>
-          </div>
-        </div>
-        <button type="submit" class="submit-button" :disabled="!isValid">
+      </div>
+
+      <div class="button-group">
+        <!-- Add Button -->
+        <button 
+          class="action-button add-button"
+          :disabled="!isValid || selectedChargeExists"
+          :class="{ 'active': !selectedChargeExists }"
+          @click="handleAddCharge"
+        >
           Add Charge
         </button>
-      </form>
-      <button type="button" class="submit-button" :disabled="!selectedChargeExists" @click="handleDeleteCharge">
-          Delete Charge
-      </button>
-    </div>
 
-    <!-- Edit charge form -->
-    <div v-if="selectedChargeExists" class="edit-container">
-      <h2 class="section-title">Edit Charge</h2>
-      <form @submit.prevent="handleEditCharge">
-        <div class="form-group">
-          <label for="editMagnitude">Magnitude (C):</label>
-          <input 
-            type="number" 
-            id="editMagnitude" 
-            v-model="editChargeValue"
-            min="0"
-            step="0.1"
-            class="input-field"
-            placeholder="Enter new magnitude"
-          >
-        </div>
-        <div class="form-group">
-          <label class="polarity-label">Polarity:</label>
-          <div class="polarity-options">
-            <label class="radio-label">
-              <input 
-                type="radio" 
-                v-model="editPolarity" 
-                value="positive"
-                name="editPolarity"
-              >
-              <span class="radio-text positive">+</span>
-            </label>
-            <label class="radio-label">
-              <input 
-                type="radio" 
-                v-model="editPolarity" 
-                value="negative"
-                name="editPolarity"
-              >
-              <span class="radio-text negative">−</span>
-            </label>
-          </div>
-        </div>
-        <button type="submit" class="submit-button" :disabled="!isEditValid">
-          Update Charge
+        <!-- Edit Button -->
+        <button 
+          class="action-button edit-button"
+          :disabled="!isValid || !selectedChargeExists"
+          @click="handleEditCharge"
+        >
+          Edit Charge
         </button>
-      </form>
-    </div>
 
-    <!-- Debug section moved below edit form -->
-    <div class="debug-section">
-      <h3>Debug: Charges in Store</h3>
-      <pre>{{ chargesStore.charges }}</pre>
+        <!-- Delete Button -->
+        <button 
+          class="action-button delete-button"
+          :disabled="!selectedChargeExists"
+          @click="handleDeleteCharge"
+        >
+          Delete Charge
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useChargesStore } from '@/stores/charges';
 
-// Initialize the charges store
 const chargesStore = useChargesStore();
 
-// Form state management
-const chargeValue = ref<string>(''); // Stores the magnitude input value
-const polarity = ref<'positive' | 'negative'>('positive'); // Stores selected polarity
+// Form state
+const chargeValue = ref<string>('');
+const polarity = ref<'positive' | 'negative'>('positive');
 
-// Computed property to check if form input is valid
+// Computed properties
 const isValid = computed(() => {
   return chargeValue.value !== '' && !isNaN(Number(chargeValue.value));
 });
-
-// Handler for form submission
-const handleAddCharge = () => {
-  if (!isValid.value) return; // Guard clause for invalid input
-  
-  // Add new charge to store
-  chargesStore.addCharge({
-    magnitude: Number(chargeValue.value),
-    polarity: polarity.value
-  });
-  
-  // Reset form after submission
-  chargeValue.value = '';
-};
 
 const selectedChargeExists = computed(() => {
   return chargesStore.selectedChargeId !== null;
 });
 
-// Handle deleting a charge
-const handleDeleteCharge = () => {
-  if (chargesStore.selectedChargeId !== null) {
-    chargesStore.removeCharge(chargesStore.selectedChargeId);
-    chargesStore.selectedChargeId = null;
-  }
-}
-
-// State for editing charge
-const editChargeValue = ref<string>('');
-const editPolarity = ref<'positive' | 'negative'>('positive');
-
-// Computed property to check if edit form input is valid
-const isEditValid = computed(() => {
-  return editChargeValue.value !== '' && !isNaN(Number(editChargeValue.value));
+const isEditing = computed(() => {
+  return selectedChargeExists.value;
 });
 
-// Handler for editing a charge
-const handleEditCharge = () => {
-  if (!isEditValid.value || !selectedChargeExists.value) return;
+// Watch for selected charge to populate form
+watch(() => chargesStore.selectedChargeId, (newId) => {
+  if (newId) {
+    const selectedCharge = chargesStore.charges.find(c => c.id === newId);
+    if (selectedCharge) {
+      chargeValue.value = selectedCharge.magnitude.toString();
+      polarity.value = selectedCharge.polarity;
+    }
+  } else {
+    resetForm();
+  }
+});
 
+// Handlers
+const handleAddCharge = () => {
+  if (!isValid.value || selectedChargeExists.value) return;
+  
+  chargesStore.addCharge({
+    magnitude: Number(chargeValue.value),
+    polarity: polarity.value
+  });
+  
+  resetForm();
+};
+
+const handleEditCharge = () => {
+  if (!isValid.value || !selectedChargeExists.value) return;
+  
   chargesStore.updateCharge({
     id: chargesStore.selectedChargeId!,
-    magnitude: Number(editChargeValue.value),
-    polarity: editPolarity.value
+    magnitude: Number(chargeValue.value),
+    polarity: polarity.value
   });
+  
+  chargesStore.setSelectedCharge(null);
+  resetForm();
+};
 
-  // Optionally reset edit form after submission
-  editChargeValue.value = '';
+const handleDeleteCharge = () => {
+  if (!selectedChargeExists.value) return;
+  
+  chargesStore.removeCharge(chargesStore.selectedChargeId!);
+  chargesStore.setSelectedCharge(null);
+  resetForm();
+};
+
+const resetForm = () => {
+  chargeValue.value = '';
+  polarity.value = 'positive';
 };
 </script>
 
 <style scoped>
-/* Container for the entire control panel */
 .controls-container {
   width: 300px;
-  background-color: white;
+  background-color: #f5f5f5;
   height: 100vh;
+  padding: 20px;
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: #2c3e50;
+}
+
+.charge-form {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  gap: 20px;
 }
 
-/* Logo styling */
-.logo {
-  font-size: 30px;
-  font-weight: 500;
-  text-align: center;
-  padding: 20px 0;
-  border-bottom: 1px solid #eee;
-}
-
-/* Charge form container styling */
-.charge-container {
-  padding: 20px;
-}
-
-/* Section title styling */
-.section-title {
-  font-size: 20px;
-  font-weight: 500;
-  margin: 0 0 20px 0;
-  color: #333;
-}
-
-/* Form group styling for input sections */
 .form-group {
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* Label styling for form inputs */
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  color: #555;
-  font-size: 14px;
-}
-
-/* Input field styling */
 .input-field {
-  width: 100%;
-  padding: 8px 12px;
+  padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.2s;
 }
 
-/* Input field focus state */
-.input-field:focus {
-  border-color: #4a90e2;
-  outline: none;
-}
-
-/* Polarity label styling */
-.polarity-label {
-  margin-bottom: 8px;
-  display: block;
-  color: #555;
-  font-size: 14px;
-}
-
-/* Container for polarity radio buttons */
-.polarity-options {
+.polarity-controls {
   display: flex;
   gap: 20px;
 }
 
-/* Radio button label styling */
-.radio-label {
+.button-group {
   display: flex;
-  align-items: center;
-  cursor: pointer;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-/* Radio input styling */
-.radio-label input {
-  margin-right: 8px;
-}
-
-/* Polarity indicator text styling */
-.radio-text {
-  font-size: 18px;
-  font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 4px;
-}
-
-/* Positive charge indicator color */
-.radio-text.positive {
-  color: #2ecc71;
-}
-
-/* Negative charge indicator color */
-.radio-text.negative {
-  color: #e74c3c;
-}
-
-/* Submit button styling */
-.submit-button {
-  width: 100%;
+.action-button {
   padding: 10px;
-  background-color: #4a90e2;
-  color: white;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
+  font-weight: 500;
   transition: background-color 0.2s;
 }
 
-/* Submit button hover state */
-.submit-button:hover:not(:disabled) {
-  background-color: #357abd;
-}
-
-/* Submit button disabled state */
-.submit-button:disabled {
-  background-color: #ccc;
+.action-button:disabled {
+  background-color: #bdc3c7;
+  color: #7f8c8d;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Debug section styling */
-.debug-section {
-  padding: 20px;
-  border-top: 1px solid #eee;
-  font-size: 12px;
+.add-button {
+  background-color: #2ecc71;
+  color: white;
 }
 
-/* Debug output styling */
-.debug-section pre {
-  white-space: pre-wrap;
-  word-break: break-all;
+.add-button.active {
+  background-color: #2ecc71;
+}
+
+.add-button:disabled {
+  background-color: #bdc3c7;
+  color: #7f8c8d;
+}
+
+.add-button:hover:not(:disabled) {
+  background-color: #27ae60;
+}
+
+.edit-button {
+  background-color: #3498db;
+  color: white;
+}
+
+.edit-button:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.delete-button {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.delete-button:hover:not(:disabled) {
+  background-color: #c0392b;
 }
 </style>
