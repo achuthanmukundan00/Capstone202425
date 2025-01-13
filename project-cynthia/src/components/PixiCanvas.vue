@@ -28,7 +28,7 @@ onMounted(async () => {
         canvasContainer.value.appendChild(app.canvas);
     }
 
-    // Prevent the page from scrolling 
+    // Prevent the page from scrolling
     //app.canvas.style.position = 'absolute';
 
     // Resize the canvas if the window is resized
@@ -39,7 +39,7 @@ onMounted(async () => {
     app.stage.hitArea = app.screen;
     app.stage.on('pointerdown', (event) => {
         // Only deselect if clicking directly on the stage (not on a charge)
-        if (event.target === app.stage) {
+        if (event.target === app?.stage) {
             chargesStore.setSelectedCharge(null);
         }
     });
@@ -151,7 +151,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
             graphic.lineStyle(0);           // Ensure no border
             graphic.drawCircle(0, 0, 20);   // Draw normal circle
             graphic.endFill();              // End the fill
-        
+
 
         // Set position based on the store data, so it persists even after adding a new charge
         graphic.position.set(charge.position.x, charge.position.y);
@@ -170,7 +170,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
             // Update the text if the magnitude has changed
             text.text = polarity + charge.magnitude.toString() + 'C';
         }
-            
+
         // Center the text within the circle
         text.anchor.set(0.5); // Centers the text
         text.position.set(0, 0); // Position text at the center of the circle
