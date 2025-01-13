@@ -37,6 +37,33 @@ onMounted(async () => {
   // Add click handler to the stage for deselection
   app.stage.interactive = true;
   app.stage.hitArea = app.screen;
+
+  // Global pointermove event
+  app.stage.on('pointermove', (event) => {
+    chargesStore.charges.forEach((charge) => {
+      const graphic = chargesGraphics.get(charge.id);
+      if (graphic && graphic.dragging) {
+        const newPosition = event.data.getLocalPosition(graphic.parent);
+        graphic.position.set(newPosition.x, newPosition.y);
+
+        // Update the charge position in the store
+        chargesStore.updateChargePosition(charge.id, { x: newPosition.x, y: newPosition.y });
+      }
+    });
+  });
+
+  // Ensure pointerup events are handled globally
+  app.stage.on('pointerup', () => {
+    chargesStore.charges.forEach((charge) => {
+      const graphic = chargesGraphics.get(charge.id);
+      if (graphic) {
+        graphic.dragging = false;
+        graphic.data = null;
+        graphic.alpha = 1; // Reset appearance
+      }
+    });
+  });
+
   app.stage.on('pointerdown', (event) => {
     // Only deselect if clicking directly on the stage (not on a charge)
     if (event.target === app?.stage) {
@@ -48,8 +75,8 @@ onMounted(async () => {
   watch(
     () => chargesStore.charges,
     (newCharges) => {
-      updateChargesOnCanvas(newCharges);
       drawElectricField(app!, newCharges); // Draw electric field after updating charges
+      updateChargesOnCanvas(newCharges);
     },
     { deep: true, immediate: true }
   );
@@ -67,6 +94,7 @@ const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
     drawElectricField(app, chargesStore.charges); // Redraw electric field on resize
+    updateChargesOnCanvas(chargesStore.charges)
   }
 };
 
@@ -114,14 +142,6 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
           graphic!.dragging = false;
           graphic!.data = null;
         })
-        .on('pointermove', () => {
-          if (graphic!.dragging) {
-            const newPosition = graphic!.data.getLocalPosition(graphic!.parent);
-            graphic!.position.set(newPosition.x, newPosition.y);
-            chargesStore.updateChargePosition(charge.id, { x: newPosition.x, y: newPosition.y });
-            drawElectricField(app!, chargesStore.charges); // Redraw field on drag
-          }
-        });
     } else {
       // Clear the graphic to redraw
       graphic.clear();
