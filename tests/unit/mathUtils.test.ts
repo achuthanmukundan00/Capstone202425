@@ -3,8 +3,8 @@ import {
   calculateElectricField,
   calculateMagneticForce,
   normalizeAndScale,
-} from '../src/utils/mathUtils'
-import { K } from '../src/consts/consts'
+} from '../../src/utils/mathUtils'
+import { K } from '../../src/consts/consts'
 
 describe('mathUtils', () => {
   describe('calculateElectricField', () => {
