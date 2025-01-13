@@ -19,6 +19,27 @@ export function calculateElectricField(chargePosition: { x: number; y: number },
     return isPositive ? { x: fieldX, y: fieldY } : { x: -fieldX, y: -fieldY };
 }
 
+// Calculate the magnetic force vector on a moving point charge
+export function calculateMagneticForce(
+  chargeMagnitude: number,
+  chargeVelocity: { x: number; y: number; z: number },
+  magneticField: { x: number; y: number; z: number }
+): { x: number; y: number; z: number } {
+  // Cross product: v x B
+  const crossProduct = {
+    x: chargeVelocity.y * magneticField.z - chargeVelocity.z * magneticField.y,
+    y: chargeVelocity.z * magneticField.x - chargeVelocity.x * magneticField.z,
+    z: chargeVelocity.x * magneticField.y - chargeVelocity.y * magneticField.x,
+  };
+
+  // Scale by charge magnitude
+  return {
+    x: chargeMagnitude * crossProduct.x,
+    y: chargeMagnitude * crossProduct.y,
+    z: chargeMagnitude * crossProduct.z,
+  };
+}
+
 // Normalize a vector and scale it
 export function normalizeAndScale(vector: { x: number; y: number }, scale: number) {
     const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
