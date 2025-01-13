@@ -28,6 +28,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Change directory
+        working-directory: ../../
+        run: ls 
+
       - name: Build the project
         run: npm run build
 
