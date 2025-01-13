@@ -10,12 +10,16 @@ export interface Charge {
   force?: { x: number; y: number; z: number } // Optional: Magnetic force vector
 }
 
+// Add mode type
+export type SimulationMode = 'electric' | 'magnetic';
+
 // Create a Pinia store for managing charges
 export const useChargesStore = defineStore('charges', {
   // Initial state of the store
   state: () => ({
     charges: [] as Charge[], // Array to hold all charges in the simulation
     selectedChargeId: null as string | null,
+    mode: 'electric' as SimulationMode, // Add mode to state
   }),
 
   // Actions that can be performed on the store
@@ -53,7 +57,13 @@ export const useChargesStore = defineStore('charges', {
         if (updatedCharge.polarity !== undefined) {
           charge.polarity = updatedCharge.polarity
         }
+        if (updatedCharge.velocity !== undefined) {
+          charge.velocity = updatedCharge.velocity
+        }
       }
+    },
+    setMode(mode: SimulationMode) {
+      this.mode = mode;
     },
   },
 })

@@ -6,7 +6,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
-import { useChargesStore } from '@/stores/charges';
+import { useChargesStore, type SimulationMode } from '@/stores/charges';
 import { drawElectricField } from '@/utils/drawingUtils';
 
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -75,10 +75,32 @@ onMounted(async () => {
   watch(
     () => chargesStore.charges,
     (newCharges) => {
-      drawElectricField(app!, newCharges); // Draw electric field after updating charges
+      // Only draw electric field if in electric mode
+      if (chargesStore.mode === 'electric') {
+        drawElectricField(app!, newCharges);
+      }
       updateChargesOnCanvas(newCharges);
     },
     { deep: true, immediate: true }
+  );
+
+  // Watch for mode changes
+  watch(
+    () => chargesStore.mode,
+    (newMode) => {
+      if (!app) return;
+      
+      // Clear existing field visualization
+      app.stage.children
+        .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-'))
+        .forEach(child => app.stage.removeChild(child));
+      
+      // Only redraw electric field in electric mode
+      if (newMode === 'electric') {
+        drawElectricField(app, chargesStore.charges);
+      }
+      // We'll implement magnetic field visualization later
+    }
   );
 });
 
@@ -93,7 +115,10 @@ onBeforeUnmount(() => {
 const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
-    drawElectricField(app, chargesStore.charges); // Redraw electric field on resize
+    // Only draw electric field if in electric mode
+    if (chargesStore.mode === 'electric') {
+      drawElectricField(app, chargesStore.charges);
+    }
     updateChargesOnCanvas(chargesStore.charges)
   }
 };

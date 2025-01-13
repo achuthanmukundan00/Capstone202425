@@ -4,6 +4,24 @@
       Cynthia.EM
     </div>
 
+    <div class="mode-toggle">
+      <label>Mode:</label>
+      <div class="toggle-buttons">
+        <button
+          :class="['mode-button', { active: mode === 'electric' }]"
+          @click="setMode('electric')"
+        >
+          Electric
+        </button>
+        <button
+          :class="['mode-button', { active: mode === 'magnetic' }]"
+          @click="setMode('magnetic')"
+        >
+          Magnetic
+        </button>
+      </div>
+    </div>
+
     <div class="charge-form">
       <div class="form-group">
         <label for="magnitude">Magnitude (C):</label>
@@ -18,6 +36,44 @@
           class="input-field"
         />
       </div>
+
+      <template v-if="mode === 'magnetic'">
+        <div class="form-group">
+          <label>Velocity:</label>
+          <div class="velocity-inputs">
+            <div class="velocity-input">
+              <label>X:</label>
+              <input
+                type="number"
+                v-model="velocityX"
+                :disabled="isEditing && !selectedChargeExists"
+                step="0.1"
+                class="input-field"
+              />
+            </div>
+            <div class="velocity-input">
+              <label>Y:</label>
+              <input
+                type="number"
+                v-model="velocityY"
+                :disabled="isEditing && !selectedChargeExists"
+                step="0.1"
+                class="input-field"
+              />
+            </div>
+            <div class="velocity-input">
+              <label>Z:</label>
+              <input
+                type="number"
+                v-model="velocityZ"
+                :disabled="isEditing && !selectedChargeExists"
+                step="0.1"
+                class="input-field"
+              />
+            </div>
+          </div>
+        </div>
+      </template>
 
       <div class="form-group">
         <label>Polarity:</label>
@@ -78,13 +134,21 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useChargesStore } from '@/stores/charges';
+import { useChargesStore, type SimulationMode } from '@/stores/charges';
 
 const chargesStore = useChargesStore();
 
 // Form state
 const chargeValue = ref<string>('');
 const polarity = ref<'positive' | 'negative'>('positive');
+
+// Add velocity refs
+const velocityX = ref('0');
+const velocityY = ref('0');
+const velocityZ = ref('0');
+
+// Add computed for current mode
+const mode = computed(() => chargesStore.mode);
 
 // Computed properties
 const isValid = computed(() => {
@@ -106,6 +170,9 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
     if (selectedCharge) {
       chargeValue.value = selectedCharge.magnitude.toString();
       polarity.value = selectedCharge.polarity;
+      velocityX.value = selectedCharge.velocity.x.toString();
+      velocityY.value = selectedCharge.velocity.y.toString();
+      velocityZ.value = selectedCharge.velocity.z.toString();
     }
   } else {
     resetForm();
@@ -119,7 +186,11 @@ const handleAddCharge = () => {
   chargesStore.addCharge({
     magnitude: Number(chargeValue.value),
     polarity: polarity.value,
-    velocity: {x: 0, y: 0, z: 0},
+    velocity: {
+      x: Number(velocityX.value),
+      y: Number(velocityY.value),
+      z: Number(velocityZ.value),
+    },
   });
 
   resetForm();
@@ -131,7 +202,12 @@ const handleEditCharge = () => {
   chargesStore.updateCharge({
     id: chargesStore.selectedChargeId!,
     magnitude: Number(chargeValue.value),
-    polarity: polarity.value
+    polarity: polarity.value,
+    velocity: {
+      x: Number(velocityX.value),
+      y: Number(velocityY.value),
+      z: Number(velocityZ.value),
+    },
   });
 
   chargesStore.setSelectedCharge(null);
@@ -149,6 +225,14 @@ const handleDeleteCharge = () => {
 const resetForm = () => {
   chargeValue.value = '';
   polarity.value = 'positive';
+  velocityX.value = '0';
+  velocityY.value = '0';
+  velocityZ.value = '0';
+};
+
+// Add mode setter
+const setMode = (newMode: SimulationMode) => {
+  chargesStore.setMode(newMode);
 };
 </script>
 
@@ -248,5 +332,47 @@ const resetForm = () => {
 
 .delete-button:hover:not(:disabled) {
   background-color: #c0392b;
+}
+
+.mode-toggle {
+  margin-bottom: 20px;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.mode-button {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+.mode-button.active {
+  background: #3498db;
+  color: white;
+  border-color: #2980b9;
+}
+
+.velocity-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.velocity-input {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.velocity-input label {
+  font-size: 0.9em;
+  color: #666;
 }
 </style>
