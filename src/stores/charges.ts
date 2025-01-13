@@ -6,7 +6,7 @@ export interface Charge {
   magnitude: number // Strength of the charge (Q)
   polarity: 'positive' | 'negative' // Whether it's a positive or negative charge
   position: { x: number; y: number } // Position on the canvas
-  velocity: { x: number; y: number } // Velocity vector of the charge
+  velocity: { x: number; y: number, z: number } // Velocity vector of the charge
   force?: { x: number; y: number; z: number } // Optional: Magnetic force vector
 }
 
@@ -28,7 +28,7 @@ export const useChargesStore = defineStore('charges', {
         magnitude: charge.magnitude,
         polarity: charge.polarity,
         position: { x: 400, y: 300 }, // Place charge in center of canvas initially
-        velocity: { x: 0, y: 0 },
+        velocity: { x: 0, y: 0, z:0 },
       }
       this.charges.push(newCharge)
     },

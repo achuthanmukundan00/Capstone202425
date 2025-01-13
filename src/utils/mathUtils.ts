@@ -22,7 +22,7 @@ export function calculateElectricField(chargePosition: { x: number; y: number },
 // Calculate the magnetic force vector on a moving point charge
 export function calculateMagneticForce(
   chargeMagnitude: number,
-  chargeVelocity: { x: number; y: number; },
+  chargeVelocity: { x: number; y: number; z: number; },
   magneticField: { x: number; y: number; z: number }
 ): { x: number; y: number; z: number } {
   // Cross product: v x B
