@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  install:
+  frontend:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,22 +24,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Change directory
-        working-directory: ../Capstone202425
-        run: ls 
-
       - name: Build the project
         run: npm run build
 
-      - name: Run tests
-        run: npm test
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
       - name: Run tests
         run: npm test
