@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Change directory
-        working-directory: ../
+        working-directory: ../Capstone202425
         run: ls 
 
       - name: Build the project
