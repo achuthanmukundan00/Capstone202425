@@ -7,9 +7,9 @@
     <div class="charge-form">
       <div class="form-group">
         <label for="magnitude">Magnitude (C):</label>
-        <input 
-          type="number" 
-          id="magnitude" 
+        <input
+          type="number"
+          id="magnitude"
           v-model="chargeValue"
           :disabled="isEditing && !selectedChargeExists"
           placeholder="Enter magnitude"
@@ -23,18 +23,18 @@
         <label>Polarity:</label>
         <div class="polarity-controls">
           <label>
-            <input 
-              type="radio" 
-              v-model="polarity" 
+            <input
+              type="radio"
+              v-model="polarity"
               value="positive"
               :disabled="isEditing && !selectedChargeExists"
             />
             Positive (+)
           </label>
           <label>
-            <input 
-              type="radio" 
-              v-model="polarity" 
+            <input
+              type="radio"
+              v-model="polarity"
               value="negative"
               :disabled="isEditing && !selectedChargeExists"
             />
@@ -45,7 +45,7 @@
 
       <div class="button-group">
         <!-- Add Button -->
-        <button 
+        <button
           class="action-button add-button"
           :disabled="!isValid || selectedChargeExists"
           :class="{ 'active': !selectedChargeExists }"
@@ -55,7 +55,7 @@
         </button>
 
         <!-- Edit Button -->
-        <button 
+        <button
           class="action-button edit-button"
           :disabled="!isValid || !selectedChargeExists"
           @click="handleEditCharge"
@@ -64,7 +64,7 @@
         </button>
 
         <!-- Delete Button -->
-        <button 
+        <button
           class="action-button delete-button"
           :disabled="!selectedChargeExists"
           @click="handleDeleteCharge"
@@ -115,31 +115,32 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
 // Handlers
 const handleAddCharge = () => {
   if (!isValid.value || selectedChargeExists.value) return;
-  
+
   chargesStore.addCharge({
     magnitude: Number(chargeValue.value),
-    polarity: polarity.value
+    polarity: polarity.value,
+    velocity: {x: 0, y: 0, z: 0},
   });
-  
+
   resetForm();
 };
 
 const handleEditCharge = () => {
   if (!isValid.value || !selectedChargeExists.value) return;
-  
+
   chargesStore.updateCharge({
     id: chargesStore.selectedChargeId!,
     magnitude: Number(chargeValue.value),
     polarity: polarity.value
   });
-  
+
   chargesStore.setSelectedCharge(null);
   resetForm();
 };
 
 const handleDeleteCharge = () => {
   if (!selectedChargeExists.value) return;
-  
+
   chargesStore.removeCharge(chargesStore.selectedChargeId!);
   chargesStore.setSelectedCharge(null);
   resetForm();
