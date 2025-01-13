@@ -40,11 +40,27 @@ export function calculateMagneticForce(
   };
 }
 
-// Normalize a vector and scale it
-export function normalizeAndScale(vector: { x: number; y: number }, scale: number) {
-    const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-    return {
-        x: (vector.x / magnitude) * scale,
-        y: (vector.y / magnitude) * scale
-    };
+// Normalize a vector and scale it - works with 2D and 3D vectors
+export function normalizeAndScale(
+  vector: { x: number; y: number; z?: number },
+  scale: number
+): { x: number; y: number; z?: number } {
+  // Calculate the magnitude
+  const magnitude = Math.sqrt(
+    vector.x ** 2 + vector.y ** 2 + (vector.z ? vector.z ** 2 : 0)
+  );
+
+  // Handle zero vector case
+  if (magnitude === 0) {
+    return { x: 0, y: 0, z: vector.z !== undefined ? 0 : undefined };
+  }
+
+  // Normalize and scale the vector
+  return {
+    x: (vector.x / magnitude) * scale,
+    y: (vector.y / magnitude) * scale,
+    z: vector.z !== undefined ? (vector.z / magnitude) * scale : undefined,
+  };
 }
+
+
