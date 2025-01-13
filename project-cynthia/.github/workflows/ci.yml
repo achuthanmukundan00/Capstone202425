@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  build:
+  install:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,8 +24,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Build the project
         run: npm run build
 
+      - name: Run tests
+        run: npm test
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Run tests
         run: npm test
