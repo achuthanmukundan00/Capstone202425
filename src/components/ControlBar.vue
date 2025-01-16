@@ -42,34 +42,47 @@
           <label>Velocity:</label>
           <div class="velocity-inputs">
             <div class="velocity-input">
-              <label>X:</label>
+              <label>Magnitude:</label>
               <input
                 type="number"
-                v-model="velocityX"
+                v-model="velocityMagnitude"
                 :disabled="isEditing && !selectedChargeExists"
+                min="0"
                 step="0.1"
                 class="input-field"
+                placeholder="Speed"
               />
             </div>
-            <div class="velocity-input">
-              <label>Y:</label>
-              <input
-                type="number"
-                v-model="velocityY"
-                :disabled="isEditing && !selectedChargeExists"
-                step="0.1"
-                class="input-field"
-              />
-            </div>
-            <div class="velocity-input">
-              <label>Z:</label>
-              <input
-                type="number"
-                v-model="velocityZ"
-                :disabled="isEditing && !selectedChargeExists"
-                step="0.1"
-                class="input-field"
-              />
+          </div>
+          <div class="velocity-direction">
+            <label>Direction:</label>
+            <div class="direction-inputs">
+              <div class="direction-input">
+                <label>X:</label>
+                <input
+                  type="number"
+                  v-model="velocityDirectionX"
+                  :disabled="isEditing && !selectedChargeExists"
+                  step="0.1"
+                  min="-1"
+                  max="1"
+                  class="input-field"
+                  placeholder="-1 to 1"
+                />
+              </div>
+              <div class="direction-input">
+                <label>Y:</label>
+                <input
+                  type="number"
+                  v-model="velocityDirectionY"
+                  :disabled="isEditing && !selectedChargeExists"
+                  step="0.1"
+                  min="-1"
+                  max="1"
+                  class="input-field"
+                  placeholder="-1 to 1"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -143,9 +156,9 @@ const chargeValue = ref<string>('');
 const polarity = ref<'positive' | 'negative'>('positive');
 
 // Add velocity refs
-const velocityX = ref('0');
-const velocityY = ref('0');
-const velocityZ = ref('0');
+const velocityMagnitude = ref('0');
+const velocityDirectionX = ref('0');
+const velocityDirectionY = ref('0');
 
 // Add computed for current mode
 const mode = computed(() => chargesStore.mode);
@@ -170,9 +183,9 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
     if (selectedCharge) {
       chargeValue.value = selectedCharge.magnitude.toString();
       polarity.value = selectedCharge.polarity;
-      velocityX.value = selectedCharge.velocity.x.toString();
-      velocityY.value = selectedCharge.velocity.y.toString();
-      velocityZ.value = selectedCharge.velocity.z.toString();
+      velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
+      velocityDirectionX.value = selectedCharge.velocity.direction.x.toString();
+      velocityDirectionY.value = selectedCharge.velocity.direction.y.toString();
     }
   } else {
     resetForm();
@@ -181,16 +194,23 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
 
 // Handlers
 const handleAddCharge = () => {
-  if (!isValid.value || selectedChargeExists.value) return;
+  if (!isValid.value) return;
+
+  // Normalize direction vector
+  const dirX = Number(velocityDirectionX.value);
+  const dirY = Number(velocityDirectionY.value);
+  const length = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
 
   chargesStore.addCharge({
     magnitude: Number(chargeValue.value),
     polarity: polarity.value,
     velocity: {
-      x: Number(velocityX.value),
-      y: Number(velocityY.value),
-      z: Number(velocityZ.value),
-    },
+      magnitude: Number(velocityMagnitude.value),
+      direction: {
+        x: dirX / length,
+        y: dirY / length
+      }
+    }
   });
 
   resetForm();
@@ -199,15 +219,21 @@ const handleAddCharge = () => {
 const handleEditCharge = () => {
   if (!isValid.value || !selectedChargeExists.value) return;
 
+  const dirX = Number(velocityDirectionX.value);
+  const dirY = Number(velocityDirectionY.value);
+  const length = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
+
   chargesStore.updateCharge({
     id: chargesStore.selectedChargeId!,
     magnitude: Number(chargeValue.value),
     polarity: polarity.value,
     velocity: {
-      x: Number(velocityX.value),
-      y: Number(velocityY.value),
-      z: Number(velocityZ.value),
-    },
+      magnitude: Number(velocityMagnitude.value),
+      direction: {
+        x: dirX / length,
+        y: dirY / length
+      }
+    }
   });
 
   chargesStore.setSelectedCharge(null);
@@ -225,9 +251,9 @@ const handleDeleteCharge = () => {
 const resetForm = () => {
   chargeValue.value = '';
   polarity.value = 'positive';
-  velocityX.value = '0';
-  velocityY.value = '0';
-  velocityZ.value = '0';
+  velocityMagnitude.value = '0';
+  velocityDirectionX.value = '0';
+  velocityDirectionY.value = '0';
 };
 
 // Add mode setter
@@ -239,10 +265,13 @@ const setMode = (newMode: SimulationMode) => {
 <style scoped>
 .controls-container {
   width: 300px;
+  min-width: 300px;
   background-color: #f5f5f5;
   height: 100vh;
   padding: 20px;
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .logo {
@@ -265,6 +294,8 @@ const setMode = (newMode: SimulationMode) => {
 }
 
 .input-field {
+  width: 100%;
+  box-sizing: border-box;
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -361,17 +392,42 @@ const setMode = (newMode: SimulationMode) => {
 
 .velocity-inputs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  width: 100%;
 }
 
 .velocity-input {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  min-width: 0;
+}
+
+.velocity-input input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .velocity-input label {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.velocity-direction {
+  margin-top: 10px;
+}
+
+.direction-inputs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.direction-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.direction-input label {
   font-size: 0.9em;
   color: #666;
 }

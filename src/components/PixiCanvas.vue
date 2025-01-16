@@ -6,7 +6,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
-import { useChargesStore, type SimulationMode } from '@/stores/charges';
+import { useChargesStore} from '@/stores/charges';
 import { drawElectricField } from '@/utils/drawingUtils';
 
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -14,6 +14,65 @@ const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
 
 let app: PIXI.Application | null = null;
+
+const MOVEMENT_STEP = 10; // pixels per keypress
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Tab') {
+    event.preventDefault(); // Prevent default tab behavior
+
+    const charges = chargesStore.charges;
+    if (charges.length === 0) return;
+
+    if (!chargesStore.selectedChargeId) {
+      // If no charge is selected, select the first one
+      chargesStore.setSelectedCharge(charges[0].id);
+    } else {
+      // Find current charge index
+      const currentIndex = charges.findIndex(c => c.id === chargesStore.selectedChargeId);
+
+      // Calculate next index (with wraparound)
+      const nextIndex = event.shiftKey
+        ? (currentIndex - 1 + charges.length) % charges.length // Shift+Tab goes backwards
+        : (currentIndex + 1) % charges.length;                 // Tab goes forwards
+
+      chargesStore.setSelectedCharge(charges[nextIndex].id);
+    }
+    return;
+  }
+
+  if (!chargesStore.selectedChargeId) return;
+
+  const charge = chargesStore.charges.find(c => c.id === chargesStore.selectedChargeId);
+  if (!charge) return;
+
+  switch (event.key) {
+    case 'ArrowUp':
+      chargesStore.updateChargePosition(charge.id, {
+        x: charge.position.x,
+        y: charge.position.y - MOVEMENT_STEP
+      });
+      break;
+    case 'ArrowDown':
+      chargesStore.updateChargePosition(charge.id, {
+        x: charge.position.x,
+        y: charge.position.y + MOVEMENT_STEP
+      });
+      break;
+    case 'ArrowLeft':
+      chargesStore.updateChargePosition(charge.id, {
+        x: charge.position.x - MOVEMENT_STEP,
+        y: charge.position.y
+      });
+      break;
+    case 'ArrowRight':
+      chargesStore.updateChargePosition(charge.id, {
+        x: charge.position.x + MOVEMENT_STEP,
+        y: charge.position.y
+      });
+      break;
+  }
+};
 
 onMounted(async () => {
   // Initialize PixiJS Application
@@ -89,12 +148,12 @@ onMounted(async () => {
     () => chargesStore.mode,
     (newMode) => {
       if (!app) return;
-      
+
       // Clear existing field visualization
       app.stage.children
         .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-'))
         .forEach(child => app.stage.removeChild(child));
-      
+
       // Only redraw electric field in electric mode
       if (newMode === 'electric') {
         drawElectricField(app, chargesStore.charges);
@@ -102,6 +161,9 @@ onMounted(async () => {
       // We'll implement magnetic field visualization later
     }
   );
+
+  // Add keyboard event listener
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 onBeforeUnmount(() => {
@@ -110,6 +172,7 @@ onBeforeUnmount(() => {
     app = null;
   }
   window.removeEventListener('resize', resize);
+  window.removeEventListener('keydown', handleKeyDown);
 });
 
 const resize = () => {
