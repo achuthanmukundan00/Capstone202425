@@ -43,3 +43,10 @@ npm run test:unit
 ```sh
 npm run lint
 ```
+## PixiJS Deprecated Methods Documentation
+https://pixijs.download/v4.8.9/docs/PIXI.Graphics.html
+Used in PixiCanvas.Vue 
+  1. graphic.drawCircle()
+  2. graphic.linestyle()
+  3. graphic.endFill()
+  4. graphic.beginFill()
