@@ -152,7 +152,7 @@ onMounted(async () => {
       // Clear existing field visualization
       app.stage.children
         .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-'))
-        .forEach(child => app.stage.removeChild(child));
+        .forEach(child => app!.stage.removeChild(child));
 
       // Only redraw electric field in electric mode
       if (newMode === 'electric') {
