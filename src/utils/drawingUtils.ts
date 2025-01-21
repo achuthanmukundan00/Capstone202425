@@ -79,7 +79,7 @@ export function drawMagneticForce(
     .forEach(child => app.stage.removeChild(child));
 
   // Calculate the magnetic force vector on the charge
-  const magneticForce = calculateMagneticForce(charge.magnitude, charge.velocity, magneticField);
+  const magneticForce = calculateMagneticForce(charge, magneticField);
 
   // Normalize and scale the vector for visualization
   const scaledForce = normalizeAndScale(magneticForce, VECTOR_LENGTH_SCALE);
