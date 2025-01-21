@@ -3,7 +3,7 @@ import {
   calculateElectricField,
   calculateMagneticForce,
   normalizeAndScale,
-} from '../../src/utils/MathUtils'
+} from '../../src/utils/mathUtils'
 import { K } from '../../src/consts'
 import type { Charge } from '../../src/stores/Charges'
 
