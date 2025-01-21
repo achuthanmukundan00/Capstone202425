@@ -34,7 +34,7 @@ export function calculateMagneticForce(
   const crossProduct = {
     x:
       charge.velocity.magnitude * charge.velocity.direction.y * magneticField.z,
-    y: -charge.velocity.magnitude * charge.velocity.direction.x * magneticField.z,
+    y: (-1) * charge.velocity.magnitude * charge.velocity.direction.x * magneticField.z,
     z: charge.velocity.magnitude * charge.velocity.direction.x * magneticField.y - charge.velocity.magnitude * charge.velocity.direction.y * magneticField.x,
   }
 
