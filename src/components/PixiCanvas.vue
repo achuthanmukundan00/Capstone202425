@@ -7,7 +7,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { useChargesStore} from '@/stores/charges';
-import { drawElectricField } from '@/utils/drawingUtils';
+import { drawElectricField, drawMagneticField } from '@/utils/drawingUtils';
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
@@ -137,6 +137,8 @@ onMounted(async () => {
       // Only draw electric field if in electric mode
       if (chargesStore.mode === 'electric') {
         drawElectricField(app!, newCharges);
+      } else {
+        drawMagneticField(app!, chargesStore.magneticField)
       }
       updateChargesOnCanvas(newCharges);
     },
@@ -157,9 +159,23 @@ onMounted(async () => {
       // Only redraw electric field in electric mode
       if (newMode === 'electric') {
         drawElectricField(app, chargesStore.charges);
+      } else {
+        drawMagneticField(app!, chargesStore.magneticField)
       }
       // We'll implement magnetic field visualization later
     }
+  );
+
+  // Watch for changes in the magnetic field
+  watch(
+    () => chargesStore.magneticField,
+    () => {
+      // Only draw electric field if in electric mode
+      if (chargesStore.mode === 'magnetic') {
+        drawMagneticField(app!, chargesStore.magneticField)
+      }
+    },
+    { deep: true, immediate: true }
   );
 
   // Add keyboard event listener
@@ -181,7 +197,9 @@ const resize = () => {
     // Only draw electric field if in electric mode
     if (chargesStore.mode === 'electric') {
       drawElectricField(app, chargesStore.charges);
-    }
+    } else {
+        drawMagneticField(app!, chargesStore.magneticField)
+      }
     updateChargesOnCanvas(chargesStore.charges)
   }
 };
