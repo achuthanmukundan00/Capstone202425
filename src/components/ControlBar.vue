@@ -222,6 +222,33 @@ watch([magneticFieldValue, magneticFieldDirection], ([newValue, newDirection]) =
   chargesStore.setMagneticField({ x: 0, y: 0, z: zComponent });
 });
 
+watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
+  if (!chargesStore.selectedChargeId) return;
+
+  const chargeId = chargesStore.selectedChargeId;
+  const charge = chargesStore.charges.find(c => c.id === chargeId);
+  if (!charge) return;
+
+  // Normalize direction vector
+  const dirX = parseFloat(velocityDirectionX.value) || 0;
+  const dirY = parseFloat(velocityDirectionY.value) || 0;
+  const magnitude = parseFloat(velocityMagnitude.value) || 0;
+  const length = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
+
+  chargesStore.updateCharge({
+    id: chargeId,
+    velocity: {
+      magnitude: magnitude,
+      direction: {
+        x: (dirX / length) * magnitude,
+        y: (dirY / length) * magnitude,
+      }
+    }
+  });
+
+  console.log(`🚀 Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+});
+
 // Function to Toggle Magnetic Field Direction
 const toggleMagneticFieldDirection = () => {
   magneticFieldDirection.value = magneticFieldDirection.value === 'out' ? 'in' : 'out';
