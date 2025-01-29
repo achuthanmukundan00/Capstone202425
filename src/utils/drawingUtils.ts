@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { calculateElectricField, calculateMagneticForce, normalizeAndScale } from './mathUtils';
 import type { Charge } from '@/stores/charges';
-import { FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH, ARROWHEAD_LENGTH } from '../consts';
+import { FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH, ARROWHEAD_LENGTH, MAG_FORCE_ARROW_COLOUR, MAG_FORCE_ARROW_FACTOR } from '../consts';
 
 export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
   // Clear existing field graphics
@@ -79,14 +79,17 @@ export function drawMagneticForce(
     .forEach(child => app.stage.removeChild(child));
 
   // Calculate the magnetic force vector on the charge
+  console.log("magnetic field", magneticField);
+  console.log("velocity", charge.velocity);
   const magneticForce = calculateMagneticForce(charge, magneticField);
+  console.log('magnetic force', magneticForce);
 
   // Normalize and scale the vector for visualization
   const scaledForce = normalizeAndScale(magneticForce, VECTOR_LENGTH_SCALE);
   const length = Math.min(
     Math.sqrt(scaledForce.x ** 2 + scaledForce.y ** 2 + (scaledForce.z || 0) ** 2),
     MAX_VECTOR_LENGTH
-  );
+  ) / VECTOR_LENGTH_SCALE;
 
   const normalizedForce = {
     x: (scaledForce.x / length) * length,
@@ -96,15 +99,15 @@ export function drawMagneticForce(
   // Create a PIXI Graphics object for the arrow
   const arrow = new PIXI.Graphics();
   arrow.name = `magneticForceVector-${charge.id}`;
-  arrow.lineStyle(2, 0xff0000, 1); // Red color for magnetic force vectors
+  arrow.lineStyle(10, MAG_FORCE_ARROW_COLOUR, 1);
 
   // Anchor the tail of the vector at the charge's position
   const startX = charge.position.x;
   const startY = charge.position.y;
-
+  console.log('force:', normalizedForce);
   // Calculate the tip of the vector
-  const endX = startX + normalizedForce.x;
-  const endY = startY + normalizedForce.y;
+  const endX = startX + MAG_FORCE_ARROW_FACTOR * normalizedForce.x;
+  const endY = startY + MAG_FORCE_ARROW_FACTOR * normalizedForce.y;
 
   // Draw the main line for the vector
   arrow.moveTo(startX, startY);
@@ -124,7 +127,7 @@ export function drawMagneticForce(
     endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6)
   );
 
-  arrow.beginFill(0xff0000);
+  arrow.beginFill(0x6832a8);
   arrow.endFill();
 
   // Add the arrow to the stage
@@ -132,6 +135,9 @@ export function drawMagneticForce(
 }
 
 export function drawMagneticField(app: PIXI.Application, magneticField: { x: number; y: number; z: number }) {
+  if (!app) {
+    return
+  }
   // Clear existing magnetic field graphics
   app.stage.children
     .filter(child => child.name === 'magneticFieldSymbol')
@@ -167,3 +173,17 @@ export function drawMagneticField(app: PIXI.Application, magneticField: { x: num
     }
   }
 }
+export function drawMagneticForcesOnAllCharges(app, chargesStore) {
+  if (!app) {
+    return
+  }
+  // Clear previous force vectors
+  app.stage.children
+    .filter(child => child.name?.startsWith('magneticForceVector-'))
+    .forEach(child => app!.stage.removeChild(child));
+
+  // Draw force for each charge
+  chargesStore.charges.forEach((charge) => {
+    drawMagneticForce(app!, charge, chargesStore.magneticField);
+  });
+};
