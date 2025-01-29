@@ -98,6 +98,13 @@
             placeholder="e.g. 1.0 (Tesla)"
           />
         </div>
+
+        <div class="form-group">
+          <label>Magnetic Field Direction:</label>
+          <button @click="toggleMagneticFieldDirection" class="direction-toggle">
+            {{ magneticFieldDirection === 'out' ? '⬆ Out of Page' : '⬇ Into Page' }}
+          </button>
+        </div>
       </template>
 
       <div class="form-group">
@@ -172,16 +179,8 @@ const velocityMagnitude = ref('0');
 const velocityDirectionX = ref('0');
 const velocityDirectionY = ref('0');
 
-const magneticFieldValue = ref('0');
-
 // Add computed for current mode
 const mode = computed(() => chargesStore.mode);
-
-watch(magneticFieldValue, (newVal) => {
-  const parsed = parseFloat(newVal) || 0;
-  // For example, store along z-axis if you prefer
-  chargesStore.setMagneticField({ x: 0, y: 0, z: parsed });
-});
 
 // Computed properties
 const isValid = computed(() => {
@@ -211,6 +210,22 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
     resetForm();
   }
 });
+
+// Magnetic Field State
+const magneticFieldValue = ref('0');
+const magneticFieldDirection = ref<'in' | 'out'>('out'); // Default: Out of the page
+
+// Watch for Magnetic Field Changes
+watch([magneticFieldValue, magneticFieldDirection], ([newValue, newDirection]) => {
+  const parsed = parseFloat(newValue) || 0;
+  const zComponent = newDirection === 'out' ? parsed : -parsed;
+  chargesStore.setMagneticField({ x: 0, y: 0, z: zComponent });
+});
+
+// Function to Toggle Magnetic Field Direction
+const toggleMagneticFieldDirection = () => {
+  magneticFieldDirection.value = magneticFieldDirection.value === 'out' ? 'in' : 'out';
+};
 
 // Handlers
 const handleAddCharge = () => {
