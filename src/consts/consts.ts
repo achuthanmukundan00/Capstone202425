@@ -10,3 +10,6 @@ export const MAG_FORCE_ARROW_FACTOR = 500000; // Scaling factor for drawing magn
 
 // Colors
 export const MAG_FORCE_ARROW_COLOUR = 0x6832a8;
+
+// Animation
+export const ANIMATION_SPEED = 0.1;
