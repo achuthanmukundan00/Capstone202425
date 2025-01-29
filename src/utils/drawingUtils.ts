@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { calculateElectricField, calculateMagneticForce, normalizeAndScale } from './mathUtils';
 import type { Charge } from '@/stores/charges';
+import type { ChargesStore } from '@/stores/charges';
 import { FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH, ARROWHEAD_LENGTH, MAG_FORCE_ARROW_COLOUR, MAG_FORCE_ARROW_FACTOR } from '../consts';
 
 export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
@@ -173,7 +174,7 @@ export function drawMagneticField(app: PIXI.Application, magneticField: { x: num
     }
   }
 }
-export function drawMagneticForcesOnAllCharges(app, chargesStore) {
+export function drawMagneticForcesOnAllCharges(app: PIXI.Application, chargesStore: ChargesStore) {
   if (!app) {
     return
   }

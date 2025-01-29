@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { Store } from 'pinia'
 
 // Define the structure of a charge object
 export interface Charge {
@@ -91,3 +92,9 @@ export const useChargesStore = defineStore('charges', {
     },
   },
 })
+
+export interface ChargesStore extends Store {
+  charges: Charge[];
+  magneticField: { x: number; y: number; z: number };
+}
+
