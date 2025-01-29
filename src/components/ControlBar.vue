@@ -86,6 +86,25 @@
             </div>
           </div>
         </div>
+
+        <div class="form-group">
+          <label for="magField">Uniform Magnetic Field (T):</label>
+          <input
+            type="number"
+            id="magField"
+            v-model="magneticFieldValue"
+            step="0.1"
+            class="input-field"
+            placeholder="e.g. 1.0 (Tesla)"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Magnetic Field Direction:</label>
+          <button @click="toggleMagneticFieldDirection" class="direction-toggle">
+            {{ magneticFieldDirection === 'out' ? '⬆ Out of Page' : '⬇ Into Page' }}
+          </button>
+        </div>
       </template>
 
       <div class="form-group">
@@ -191,6 +210,22 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
     resetForm();
   }
 });
+
+// Magnetic Field State
+const magneticFieldValue = ref('0');
+const magneticFieldDirection = ref<'in' | 'out'>('out'); // Default: Out of the page
+
+// Watch for Magnetic Field Changes
+watch([magneticFieldValue, magneticFieldDirection], ([newValue, newDirection]) => {
+  const parsed = parseFloat(newValue) || 0;
+  const zComponent = newDirection === 'out' ? parsed : -parsed;
+  chargesStore.setMagneticField({ x: 0, y: 0, z: zComponent });
+});
+
+// Function to Toggle Magnetic Field Direction
+const toggleMagneticFieldDirection = () => {
+  magneticFieldDirection.value = magneticFieldDirection.value === 'out' ? 'in' : 'out';
+};
 
 // Handlers
 const handleAddCharge = () => {
