@@ -86,6 +86,18 @@
             </div>
           </div>
         </div>
+
+        <div class="form-group">
+          <label for="magField">Uniform Magnetic Field (T):</label>
+          <input
+            type="number"
+            id="magField"
+            v-model="magneticFieldValue"
+            step="0.1"
+            class="input-field"
+            placeholder="e.g. 1.0 (Tesla)"
+          />
+        </div>
       </template>
 
       <div class="form-group">
@@ -160,8 +172,16 @@ const velocityMagnitude = ref('0');
 const velocityDirectionX = ref('0');
 const velocityDirectionY = ref('0');
 
+const magneticFieldValue = ref('0');
+
 // Add computed for current mode
 const mode = computed(() => chargesStore.mode);
+
+watch(magneticFieldValue, (newVal) => {
+  const parsed = parseFloat(newVal) || 0;
+  // For example, store along z-axis if you prefer
+  chargesStore.setMagneticField({ x: 0, y: 0, z: parsed });
+});
 
 // Computed properties
 const isValid = computed(() => {

@@ -22,7 +22,10 @@ export const useChargesStore = defineStore('charges', {
   state: () => ({
     charges: [] as Charge[], // Array to hold all charges in the simulation
     selectedChargeId: null as string | null,
-    mode: 'electric' as SimulationMode, // Add mode to state
+    mode: 'electric' as SimulationMode, // Simulation mode can be "electric" or "magnetic"
+
+    // Uniform magnetic field state (in Teslas, e.g. { x: 0, y: 0, z: 1 })
+    magneticField: { x: 0, y: 0, z: 0 },
   }),
 
   // Actions that can be performed on the store
@@ -34,7 +37,7 @@ export const useChargesStore = defineStore('charges', {
         id: crypto.randomUUID(), // Generate unique ID for the charge
         magnitude: charge.magnitude,
         polarity: charge.polarity,
-        position: { x: 400, y: 300 }, // Place charge in center of canvas initially
+        position: { x: 400, y: 300 }, // Place charge in the center of canvas initially
         velocity: {
           magnitude: 0,
           direction: { x: 0, y: 0 }
@@ -42,18 +45,26 @@ export const useChargesStore = defineStore('charges', {
       }
       this.charges.push(newCharge)
     },
+
+    // Remove charge by ID
     removeCharge(chargeId: string) {
       this.charges = this.charges.filter(charge => charge.id !== chargeId)
     },
+
+    // Update charge position by ID
     updateChargePosition(id: string, newPosition: { x: number; y: number }) {
       const charge = this.charges.find(c => c.id === id)
       if (charge) {
         charge.position = newPosition
       }
     },
+
+    // Set which charge is selected (for editing, highlighting, etc.)
     setSelectedCharge(id: string | null) {
       this.selectedChargeId = id
     },
+
+    // Update existing charge fields (magnitude, polarity, velocity, etc.)
     updateCharge(updatedCharge: Partial<Charge> & { id: string }) {
       const charge = this.charges.find(c => c.id === updatedCharge.id)
       if (charge) {
@@ -68,8 +79,15 @@ export const useChargesStore = defineStore('charges', {
         }
       }
     },
+
+    // Switch between "electric" or "magnetic" mode
     setMode(mode: SimulationMode) {
-      this.mode = mode;
+      this.mode = mode
+    },
+
+    // Set the uniform magnetic field (in Teslas)
+    setMagneticField(newField: { x: number; y: number; z: number }) {
+      this.magneticField = newField
     },
   },
 })
