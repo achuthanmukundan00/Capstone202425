@@ -1,5 +1,6 @@
-// Coulomb constant (N·m²/C²)
-export const K = 8.9875517923e9;
+// Physics
+export const K = 8.9875517923e9; // Coulomb constant (N·m²/C²)
+export const e = 1.60217663e-19; // Elementary charge (C)
 
 // Vector Field Consts
 export const FIELD_SPACING = 64; // Spacing between field vectors in pixels
@@ -12,4 +13,5 @@ export const MAG_FORCE_ARROW_FACTOR = 500000; // Scaling factor for drawing magn
 export const MAG_FORCE_ARROW_COLOUR = 0x6832a8;
 
 // Animation
-export const ANIMATION_SPEED = 0.1;
+export const ANIMATION_SPEED = 8e-2;
+export const FORCE_SCALING = 4e-5; 

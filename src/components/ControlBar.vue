@@ -38,6 +38,11 @@
       </div>
 
       <template v-if="mode === 'magnetic'">
+
+        <div class="button-group">
+          <button class="action-button start-button" @click="startAnimation">Start Animation</button>
+          <button class="action-button reset-button" @click="resetAnimation">Reset Animation</button>
+        </div>
         <div class="form-group">
           <label>Velocity:</label>
           <div class="velocity-inputs">
@@ -169,6 +174,14 @@ import { ref, computed, watch } from 'vue';
 import { useChargesStore, type SimulationMode } from '@/stores/charges';
 
 const chargesStore = useChargesStore();
+
+const startAnimation = () => {
+  chargesStore.startAnimation();
+};
+
+const resetAnimation = () => {
+  chargesStore.resetAnimation();
+};
 
 // Form state
 const chargeValue = ref<string>('');
