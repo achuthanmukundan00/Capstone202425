@@ -38,6 +38,11 @@
       </div>
 
       <template v-if="mode === 'magnetic'">
+
+        <div class="button-group">
+          <button class="action-button start-button" @click="startAnimation">Start Animation</button>
+          <button class="action-button reset-button" @click="resetAnimation">Reset Animation</button>
+        </div>
         <div class="form-group">
           <label>Velocity:</label>
           <div class="velocity-inputs">
@@ -170,6 +175,14 @@ import { useChargesStore, type SimulationMode } from '@/stores/charges';
 
 const chargesStore = useChargesStore();
 
+const startAnimation = () => {
+  chargesStore.startAnimation();
+};
+
+const resetAnimation = () => {
+  chargesStore.resetAnimation();
+};
+
 // Form state
 const chargeValue = ref<string>('');
 const polarity = ref<'positive' | 'negative'>('positive');
@@ -202,9 +215,9 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
     if (selectedCharge) {
       chargeValue.value = selectedCharge.magnitude.toString();
       polarity.value = selectedCharge.polarity;
-      velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
-      velocityDirectionX.value = selectedCharge.velocity.direction.x.toString();
-      velocityDirectionY.value = selectedCharge.velocity.direction.y.toString();
+      selectedCharge.velocity.magnitude = Number(velocityMagnitude.value);
+      selectedCharge.velocity.direction.x = Number(velocityDirectionX.value);
+      selectedCharge.velocity.direction.y = Number(velocityDirectionY.value);
     }
   } else {
     resetForm();

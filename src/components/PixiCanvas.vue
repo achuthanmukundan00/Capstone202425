@@ -6,12 +6,16 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
-import { useChargesStore} from '@/stores/charges';
+import { useChargesStore } from '@/stores/charges';
 import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges } from '@/utils/drawingUtils';
+import { calculateMagneticForce } from '@/utils/mathUtils';
+import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
 
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
+
+let animationFrameId: number;
 
 let app: PIXI.Application | null = null;
 
@@ -72,6 +76,22 @@ const handleKeyDown = (event: KeyboardEvent) => {
       });
       break;
   }
+};
+
+const updateChargeMotion = () => {
+  if (!chargesStore.isAnimating) return;
+
+  chargesStore.charges.forEach(charge => {
+    const force = calculateMagneticForce(charge, chargesStore.magneticField);
+    console.log('velocity', charge.velocity);
+    console.log('force: ', force);
+
+    charge.velocity.direction.x += force.x * FORCE_SCALING;
+    charge.velocity.direction.y += force.y * FORCE_SCALING;
+    charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
+    charge.position.y += charge.velocity.direction.y * ANIMATION_SPEED;
+  });
+  animationFrameId = requestAnimationFrame(updateChargeMotion);
 };
 
 onMounted(async () => {
@@ -182,9 +202,15 @@ onMounted(async () => {
 
   // Add keyboard event listener
   window.addEventListener('keydown', handleKeyDown);
+
+  app.ticker.add(() => {
+    updateChargeMotion();
+  })
 });
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(animationFrameId);
+
   if (app) {
     app.destroy(true, { children: true });
     app = null;
@@ -200,9 +226,9 @@ const resize = () => {
     if (chargesStore.mode === 'electric') {
       drawElectricField(app, chargesStore.charges);
     } else {
-        drawMagneticField(app!, chargesStore.magneticField)
-        drawMagneticForcesOnAllCharges(app!, chargesStore);
-      }
+      drawMagneticField(app!, chargesStore.magneticField)
+      drawMagneticForcesOnAllCharges(app!, chargesStore);
+    }
     updateChargesOnCanvas(chargesStore.charges)
   }
 };

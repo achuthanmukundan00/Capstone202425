@@ -27,6 +27,7 @@ export const useChargesStore = defineStore('charges', {
 
     // Uniform magnetic field state (in Teslas, e.g. { x: 0, y: 0, z: 1 })
     magneticField: { x: 0, y: 0, z: 0 },
+    isAnimating: false,
   }),
 
   // Actions that can be performed on the store
@@ -89,6 +90,18 @@ export const useChargesStore = defineStore('charges', {
     // Set the uniform magnetic field (in Teslas)
     setMagneticField(newField: { x: number; y: number; z: number }) {
       this.magneticField = newField
+    },
+
+    startAnimation() {
+      this.isAnimating = true;
+    },
+
+    resetAnimation() {
+      this.isAnimating = false;
+      this.charges.forEach(charge => {
+        charge.position = { x: 400, y: 300 };
+        charge.velocity = { magnitude: 0, direction: { x: 0, y: 0 } };
+      });
     },
   },
 })

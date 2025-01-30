@@ -31,12 +31,16 @@ export function calculateMagneticForce(
   magneticField: { x: number; y: number; z: number },
 ): { x: number; y: number; z: number } {
   // Cross product: v x B
+  console.log('mag field:', magneticField);
+  console.log('charge', charge);
   const crossProduct = {
     x:
       charge.velocity.magnitude * charge.velocity.direction.y * magneticField.z,
     y: (-1) * charge.velocity.magnitude * charge.velocity.direction.x * magneticField.z,
     z: charge.velocity.magnitude * charge.velocity.direction.x * magneticField.y - charge.velocity.magnitude * charge.velocity.direction.y * magneticField.x,
   }
+  console.log('crossProduct', crossProduct);
+
 
   // Scale by charge magnitude
   return {
