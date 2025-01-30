@@ -215,9 +215,9 @@ watch(() => chargesStore.selectedChargeId, (newId) => {
     if (selectedCharge) {
       chargeValue.value = selectedCharge.magnitude.toString();
       polarity.value = selectedCharge.polarity;
-      velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
-      velocityDirectionX.value = selectedCharge.velocity.direction.x.toString();
-      velocityDirectionY.value = selectedCharge.velocity.direction.y.toString();
+      selectedCharge.velocity.magnitude = Number(velocityMagnitude.value);
+      selectedCharge.velocity.direction.x = Number(velocityDirectionX.value);
+      selectedCharge.velocity.direction.y = Number(velocityDirectionY.value);
     }
   } else {
     resetForm();
