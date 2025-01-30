@@ -80,10 +80,7 @@ export function drawMagneticForce(
     .forEach(child => app.stage.removeChild(child));
 
   // Calculate the magnetic force vector on the charge
-  console.log("magnetic field", magneticField);
-  console.log("velocity", charge.velocity);
   const magneticForce = calculateMagneticForce(charge, magneticField);
-  console.log('magnetic force', magneticForce);
 
   // Normalize and scale the vector for visualization
   const scaledForce = normalizeAndScale(magneticForce, VECTOR_LENGTH_SCALE);
@@ -105,7 +102,6 @@ export function drawMagneticForce(
   // Anchor the tail of the vector at the charge's position
   const startX = charge.position.x;
   const startY = charge.position.y;
-  console.log('force:', normalizedForce);
   // Calculate the tip of the vector
   const endX = startX + MAG_FORCE_ARROW_FACTOR * normalizedForce.x;
   const endY = startY + MAG_FORCE_ARROW_FACTOR * normalizedForce.y;
