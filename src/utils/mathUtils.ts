@@ -1,5 +1,5 @@
 import type { Charge } from '@/stores/charges'
-import { K, e } from '../consts'
+import { K } from '../consts'
 
 // Calculate electric field at a given point due to a charge
 export function calculateElectricField(

@@ -1,6 +1,5 @@
 // Physics
 export const K = 8.9875517923e9; // Coulomb constant (N·m²/C²)
-export const e = 1.60217663e-19; // Elementary charge (C)
 
 // Vector Field Consts
 export const FIELD_SPACING = 64; // Spacing between field vectors in pixels
