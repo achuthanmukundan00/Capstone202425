@@ -4,13 +4,23 @@ import type { Charge } from '@/stores/charges';
 import type { ChargesStore } from '@/stores/charges';
 import { FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH, ARROWHEAD_LENGTH, MAG_FORCE_ARROW_COLOUR, MAG_FORCE_ARROW_FACTOR } from '../consts';
 
+// Update constants at the top of the file
+const MIN_ALPHA = 0.15;  // Slightly lower minimum for better contrast
+const MAX_ALPHA = 1.0;   // Keep maximum the same
+const LOG_SCALE_FACTOR = 2; // Adjust this to control sensitivity of brightness changes
+
 export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
   // Clear existing field graphics
   app.stage.children
     .filter(child => child.name === 'fieldVector')
     .forEach(child => app.stage.removeChild(child));
 
-  // Generate field vectors across a grid
+  if (charges.length === 0) return; // Don't draw anything if there are no charges
+
+  let maxFieldMagnitude = 0;
+  let minFieldMagnitude = Infinity;  // Track minimum magnitude as well
+
+  // First pass: calculate magnitude range
   for (let x = 0; x < app.screen.width; x += FIELD_SPACING) {
     for (let y = 0; y < app.screen.height; y += FIELD_SPACING) {
       const fieldVector = { x: 0, y: 0 };
@@ -25,8 +35,43 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
         fieldVector.y += chargeField.y;
       });
 
-      // Calculate the magnitude of the field vector
       const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2);
+      maxFieldMagnitude = Math.max(maxFieldMagnitude, magnitude);
+      if (magnitude > 0) {  // Ignore zero field points
+        minFieldMagnitude = Math.min(minFieldMagnitude, magnitude);
+      }
+    }
+  }
+
+  // Second pass: draw vectors with logarithmic alpha scaling
+  for (let x = 0; x < app.screen.width; x += FIELD_SPACING) {
+    for (let y = 0; y < app.screen.height; y += FIELD_SPACING) {
+      const fieldVector = { x: 0, y: 0 };
+      charges.forEach(charge => {
+        const chargeField = calculateElectricField(
+          charge.position,
+          charge.magnitude,
+          { x, y },
+          charge.polarity === 'positive'
+        );
+        fieldVector.x += chargeField.x;
+        fieldVector.y += chargeField.y;
+      });
+
+      const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2);
+
+      // Use logarithmic scaling for alpha
+      const logMin = Math.log(minFieldMagnitude || 1e-10);
+      const logMax = Math.log(maxFieldMagnitude);
+      const logCurrent = Math.log(magnitude || 1e-10);
+
+      // Calculate normalized alpha using log scale
+      const normalizedMagnitude =
+        (logCurrent - logMin) / (logMax - logMin);
+
+      // Apply exponential scaling for more dramatic differences
+      const alpha = MIN_ALPHA +
+        (MAX_ALPHA - MIN_ALPHA) * Math.pow(normalizedMagnitude, 1/LOG_SCALE_FACTOR);
 
       // Scale the vector length based on the field strength
       const length = Math.min(magnitude * VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH);
@@ -35,21 +80,21 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
         y: (fieldVector.y / magnitude) * length
       };
 
-      // Draw the vector as an arrow
+      // Draw the vector as an arrow with calculated alpha
       const arrow = new PIXI.Graphics();
       arrow.name = 'fieldVector';
-      arrow.lineStyle(2, 0xffffff, 1);
+      arrow.lineStyle(2, 0xffffff, alpha); // Use calculated alpha for line opacity
 
-      // Draw main line for the vector
+      // Draw main line
       arrow.moveTo(x, y);
       const endX = x + normalizedVector.x;
       const endY = y + normalizedVector.y;
       arrow.lineTo(endX, endY);
 
-      // Calculate the angle of the vector for arrowhead direction
+      // Calculate arrowhead angle
       const angle = Math.atan2(normalizedVector.y, normalizedVector.x);
 
-      // Draw arrowhead on the end of the vector
+      // Draw arrowhead
       arrow.lineTo(
         endX - ARROWHEAD_LENGTH * Math.cos(angle - Math.PI / 6),
         endY - ARROWHEAD_LENGTH * Math.sin(angle - Math.PI / 6)
@@ -60,10 +105,9 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
         endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6)
       );
 
-      arrow.beginFill(0xffffff);
+      arrow.beginFill(0xffffff, alpha); // Use same alpha for fill
       arrow.endFill();
 
-      // Add the arrow to the stage
       app.stage.addChild(arrow);
     }
   }

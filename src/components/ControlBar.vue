@@ -23,21 +23,43 @@
     </div>
 
     <div class="charge-form">
-      <div class="form-group">
-        <label for="magnitude">Magnitude (C):</label>
-        <input
-          type="number"
-          id="magnitude"
-          v-model="chargeValue"
-          :disabled="isEditing && !selectedChargeExists"
-          placeholder="Enter magnitude"
-          min="0"
-          step="0.1"
-          class="input-field"
-        />
+      <div v-if="selectedChargeExists" class="selection-controls">
+        <span class="selection-label">Editing Charge</span>
+        <button class="close-button" @click="handleDeselect" title="Exit edit mode">
+          ×
+        </button>
       </div>
 
+      <RangeSlider
+        v-model="chargeValueNum"
+        :min="CHARGE_MAGNITUDE_BOUNDS.MIN"
+        :max="CHARGE_MAGNITUDE_BOUNDS.MAX"
+        :step="CHARGE_MAGNITUDE_BOUNDS.STEP"
+        label="Charge Magnitude"
+        unit="C"
+        :precision="1"
+      />
+
       <template v-if="mode === 'magnetic'">
+        <RangeSlider
+          v-model="magneticFieldValueNum"
+          :min="MAGNETIC_FIELD_BOUNDS.MIN"
+          :max="MAGNETIC_FIELD_BOUNDS.MAX"
+          :step="MAGNETIC_FIELD_BOUNDS.STEP"
+          label="Magnetic Field Strength"
+          unit="T"
+          :precision="1"
+        />
+
+        <RangeSlider
+          v-model="velocityMagnitudeNum"
+          :min="VELOCITY_BOUNDS.MIN"
+          :max="VELOCITY_BOUNDS.MAX"
+          :step="VELOCITY_BOUNDS.STEP"
+          label="Velocity"
+          unit="m/s"
+          :precision="0"
+        />
 
         <div class="button-group">
           <button class="action-button start-button" @click="startAnimation">Start Animation</button>
@@ -50,8 +72,7 @@
               <label>Magnitude:</label>
               <input
                 type="number"
-                v-model="velocityMagnitude"
-                :disabled="isEditing && !selectedChargeExists"
+                v-model="velocityMagnitudeNum"
                 min="0"
                 step="0.1"
                 class="input-field"
@@ -67,7 +88,6 @@
                 <input
                   type="number"
                   v-model="velocityDirectionX"
-                  :disabled="isEditing && !selectedChargeExists"
                   step="0.1"
                   min="-1"
                   max="1"
@@ -80,7 +100,6 @@
                 <input
                   type="number"
                   v-model="velocityDirectionY"
-                  :disabled="isEditing && !selectedChargeExists"
                   step="0.1"
                   min="-1"
                   max="1"
@@ -97,7 +116,7 @@
           <input
             type="number"
             id="magField"
-            v-model="magneticFieldValue"
+            v-model="magneticFieldValueNum"
             step="0.1"
             class="input-field"
             placeholder="e.g. 1.0 (Tesla)"
@@ -120,7 +139,6 @@
               type="radio"
               v-model="polarity"
               value="positive"
-              :disabled="isEditing && !selectedChargeExists"
             />
             Positive (+)
           </label>
@@ -129,7 +147,6 @@
               type="radio"
               v-model="polarity"
               value="negative"
-              :disabled="isEditing && !selectedChargeExists"
             />
             Negative (-)
           </label>
@@ -172,6 +189,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useChargesStore, type SimulationMode } from '@/stores/charges';
+import RangeSlider from './ui/RangeSlider.vue';
+import { CHARGE_MAGNITUDE_BOUNDS, MAGNETIC_FIELD_BOUNDS, VELOCITY_BOUNDS } from '@/consts';
 
 const chargesStore = useChargesStore();
 
@@ -184,10 +203,8 @@ const resetAnimation = () => {
 };
 
 // Form state
-const chargeValue = ref<string>('');
+const chargeValue = ref('0');
 const polarity = ref<'positive' | 'negative'>('positive');
-
-// Add velocity refs
 const velocityMagnitude = ref('0');
 const velocityDirectionX = ref('0');
 const velocityDirectionY = ref('0');
@@ -204,23 +221,23 @@ const selectedChargeExists = computed(() => {
   return chargesStore.selectedChargeId !== null;
 });
 
-const isEditing = computed(() => {
-  return selectedChargeExists.value;
-});
+// const isEditing = computed(() => {
+//   return selectedChargeExists.value;
+// });
 
-// Watch for selected charge to populate form
-watch(() => chargesStore.selectedChargeId, (newId) => {
-  if (newId) {
-    const selectedCharge = chargesStore.charges.find(c => c.id === newId);
-    if (selectedCharge) {
-      chargeValue.value = selectedCharge.magnitude.toString();
-      polarity.value = selectedCharge.polarity;
-      selectedCharge.velocity.magnitude = Number(velocityMagnitude.value);
-      selectedCharge.velocity.direction.x = Number(velocityDirectionX.value);
-      selectedCharge.velocity.direction.y = Number(velocityDirectionY.value);
+// Convert string values to numbers for the sliders
+const chargeValueNum = computed({
+  get: () => Number(chargeValue.value),
+  set: (val: number) => {
+    chargeValue.value = val.toString();
+    // Update selected charge if editing
+    if (chargesStore.selectedChargeId) {
+      chargesStore.updateCharge({
+        id: chargesStore.selectedChargeId,
+        magnitude: val,
+        polarity: polarity.value
+      });
     }
-  } else {
-    resetForm();
   }
 });
 
@@ -324,7 +341,7 @@ const handleDeleteCharge = () => {
 };
 
 const resetForm = () => {
-  chargeValue.value = '';
+  chargeValue.value = '0';
   polarity.value = 'positive';
   velocityMagnitude.value = '0';
   velocityDirectionX.value = '0';
@@ -334,6 +351,22 @@ const resetForm = () => {
 // Add mode setter
 const setMode = (newMode: SimulationMode) => {
   chargesStore.setMode(newMode);
+};
+
+const magneticFieldValueNum = computed({
+  get: () => Number(magneticFieldValue.value) || 0,
+  set: (val: number) => { magneticFieldValue.value = val.toString(); }
+});
+
+const velocityMagnitudeNum = computed({
+  get: () => Number(velocityMagnitude.value) || 0,
+  set: (val: number) => { velocityMagnitude.value = val.toString(); }
+});
+
+// Add deselect handler
+const handleDeselect = () => {
+  chargesStore.setSelectedCharge(null);
+  resetForm();
 };
 </script>
 
@@ -359,7 +392,8 @@ const setMode = (newMode: SimulationMode) => {
 .charge-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  padding: 16px;
 }
 
 .form-group {
@@ -505,5 +539,42 @@ const setMode = (newMode: SimulationMode) => {
 .direction-input label {
   font-size: 0.9em;
   color: #666;
+}
+
+.selection-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.selection-label {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.close-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  color: #666;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.close-button:hover {
+  background: #e0e0e0;
+  color: #333;
 }
 </style>
