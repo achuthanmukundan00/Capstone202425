@@ -14,3 +14,22 @@ export const MAG_FORCE_ARROW_COLOUR = 0x6832a8;
 // Animation
 export const ANIMATION_SPEED = 8e-2;
 export const FORCE_SCALING = 4e-5;
+
+// UI Bounds
+export const CHARGE_MAGNITUDE_BOUNDS = {
+  MIN: 0,
+  MAX: 10,
+  STEP: 0.1,
+} as const;
+
+export const MAGNETIC_FIELD_BOUNDS = {
+  MIN: 0,
+  MAX: 5,
+  STEP: 0.1,
+} as const;
+
+export const VELOCITY_BOUNDS = {
+  MIN: 0,
+  MAX: 100,
+  STEP: 1,
+} as const;
