@@ -221,9 +221,9 @@ const selectedChargeExists = computed(() => {
   return chargesStore.selectedChargeId !== null;
 });
 
-const isEditing = computed(() => {
-  return selectedChargeExists.value;
-});
+// const isEditing = computed(() => {
+//   return selectedChargeExists.value;
+// });
 
 // Convert string values to numbers for the sliders
 const chargeValueNum = computed({
