@@ -16,7 +16,6 @@ const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
 
 let animationFrameId: number;
-
 let app: PIXI.Application | null = null;
 
 const MOVEMENT_STEP = 10; // pixels per keypress
@@ -29,17 +28,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (charges.length === 0) return;
 
     if (!chargesStore.selectedChargeId) {
-      // If no charge is selected, select the first one
       chargesStore.setSelectedCharge(charges[0].id);
     } else {
-      // Find current charge index
       const currentIndex = charges.findIndex(c => c.id === chargesStore.selectedChargeId);
-
-      // Calculate next index (with wraparound)
       const nextIndex = event.shiftKey
-        ? (currentIndex - 1 + charges.length) % charges.length // Shift+Tab goes backwards
-        : (currentIndex + 1) % charges.length;                 // Tab goes forwards
-
+        ? (currentIndex - 1 + charges.length) % charges.length
+        : (currentIndex + 1) % charges.length;
       chargesStore.setSelectedCharge(charges[nextIndex].id);
     }
     return;
@@ -83,9 +77,6 @@ const updateChargeMotion = () => {
 
   chargesStore.charges.forEach(charge => {
     const force = calculateMagneticForce(charge, chargesStore.magneticField);
-    console.log('velocity', charge.velocity);
-    console.log('force: ', force);
-
     charge.velocity.direction.x += force.x * FORCE_SCALING;
     charge.velocity.direction.y += force.y * FORCE_SCALING;
     charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
@@ -102,49 +93,43 @@ onMounted(async () => {
     height: window.innerHeight
   });
 
+  // Enable zIndex sorting so that graphics with higher zIndex render on top
+  app.stage.sortableChildren = true;
+
   // Append the canvas to the container
   if (canvasContainer.value && app.canvas) {
     canvasContainer.value.appendChild(app.canvas);
   }
 
-  // Prevent the page from scrolling
-  //app.canvas.style.position = 'absolute';
-
   // Resize the canvas if the window is resized
   window.addEventListener('resize', resize);
 
-  // Add click handler to the stage for deselection
+  // Set up stage interactivity and pointer events
   app.stage.interactive = true;
   app.stage.hitArea = app.screen;
-
-  // Global pointermove event
   app.stage.on('pointermove', (event) => {
     chargesStore.charges.forEach((charge) => {
       const graphic = chargesGraphics.get(charge.id);
       if (graphic && graphic.dragging) {
         const newPosition = event.data.getLocalPosition(graphic.parent);
         graphic.position.set(newPosition.x, newPosition.y);
-
-        // Update the charge position in the store
         chargesStore.updateChargePosition(charge.id, { x: newPosition.x, y: newPosition.y });
       }
     });
   });
 
-  // Ensure pointerup events are handled globally
   app.stage.on('pointerup', () => {
     chargesStore.charges.forEach((charge) => {
       const graphic = chargesGraphics.get(charge.id);
       if (graphic) {
         graphic.dragging = false;
         graphic.data = null;
-        graphic.alpha = 1; // Reset appearance
+        graphic.alpha = 1;
       }
     });
   });
 
   app.stage.on('pointerdown', (event) => {
-    // Only deselect if clicking directly on the stage (not on a charge)
     if (event.target === app?.stage) {
       chargesStore.setSelectedCharge(null);
     }
@@ -154,7 +139,6 @@ onMounted(async () => {
   watch(
     () => chargesStore.charges,
     (newCharges) => {
-      // Only draw electric field if in electric mode
       if (chargesStore.mode === 'electric') {
         drawElectricField(app!, newCharges);
       } else {
@@ -166,18 +150,15 @@ onMounted(async () => {
     { deep: true, immediate: true }
   );
 
-  // Watch for mode changes
+  // Watch for mode and magnetic field changes (code omitted for brevity)
   watch(
     () => chargesStore.mode,
     (newMode) => {
       if (!app) return;
-
-      // Clear existing field visualization
       app.stage.children
         .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-'))
         .forEach(child => app!.stage.removeChild(child));
 
-      // Only redraw electric field in electric mode
       if (newMode === 'electric') {
         drawElectricField(app, chargesStore.charges);
       } else {
@@ -187,11 +168,9 @@ onMounted(async () => {
     }
   );
 
-  // Watch for changes in the magnetic field
   watch(
     () => chargesStore.magneticField,
     () => {
-      // Only draw electric field if in electric mode
       if (chargesStore.mode === 'magnetic') {
         drawMagneticField(app!, chargesStore.magneticField)
         drawMagneticForcesOnAllCharges(app!, chargesStore);
@@ -205,12 +184,11 @@ onMounted(async () => {
 
   app.ticker.add(() => {
     updateChargeMotion();
-  })
+  });
 });
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationFrameId);
-
   if (app) {
     app.destroy(true, { children: true });
     app = null;
@@ -222,14 +200,13 @@ onBeforeUnmount(() => {
 const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
-    // Only draw electric field if in electric mode
     if (chargesStore.mode === 'electric') {
       drawElectricField(app, chargesStore.charges);
     } else {
       drawMagneticField(app!, chargesStore.magneticField)
       drawMagneticForcesOnAllCharges(app!, chargesStore);
     }
-    updateChargesOnCanvas(chargesStore.charges)
+    updateChargesOnCanvas(chargesStore.charges);
   }
 };
 
@@ -247,10 +224,10 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
   // Add or update graphics for current charges
   charges.forEach((charge) => {
     let graphic = chargesGraphics.get(charge.id);
-
     if (!graphic) {
-      // Create a new graphic if it doesn't exist
       graphic = new PIXI.Graphics();
+      // Set a high zIndex so that charges render on top of arrows
+      graphic.zIndex = 10;
       chargesGraphics.set(charge.id, graphic);
       app?.stage.addChild(graphic);
 
@@ -276,25 +253,21 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
         .on('pointerupoutside', () => {
           graphic!.dragging = false;
           graphic!.data = null;
-        })
+        });
     } else {
-      // Clear the graphic to redraw
       graphic.clear();
     }
 
-    // Set color based on polarity
-    const color = charge.polarity === 'positive' ? 0xff0000 : 0x0000ff; // Red for positive, blue for negative
+    const color = charge.polarity === 'positive' ? 0xD55E00 : 0x0072B2;
     const polarity = charge.polarity === 'positive' ? "+" : "-";
 
+    // Draw the charge circle
+    graphic.beginFill(color);
+    graphic.lineStyle(0);
+    graphic.drawCircle(0, 0, 20);
+    graphic.endFill();
 
-    // Draw the normal circle
-    graphic.beginFill(color);       // Set the fill color
-    graphic.lineStyle(0);           // Ensure no border
-    graphic.drawCircle(0, 0, 20);   // Draw normal circle
-    graphic.endFill();              // End the fill
-
-
-    // Set position based on the store data, so it persists even after adding a new charge
+    // Set position
     graphic.position.set(charge.position.x, charge.position.y);
 
     // Create or update the text label for the charge magnitude
@@ -302,30 +275,25 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     if (!text) {
       text = new PIXI.Text(polarity + charge.magnitude.toString() + 'C', {
         fontSize: 14,
-        fill: 0xffffff, // White text color for visibility
+        fill: 0xffffff,
         align: 'center'
       });
       text.name = 'chargeLabel';
       graphic.addChild(text);
     } else {
-      // Update the text if the magnitude has changed
       text.text = polarity + charge.magnitude.toString() + 'C';
     }
 
-    // Center the text within the circle
-    text.anchor.set(0.5); // Centers the text
-    text.position.set(0, 0); // Position text at the center of the circle
+    text.anchor.set(0.5);
+    text.position.set(0, 0);
   });
 };
-
-
 </script>
 
 <style scoped>
 .canvas-container {
   flex-grow: 1;
   height: 100%;
-  /* Ensures it takes full height */
   overflow: hidden;
 }
 </style>

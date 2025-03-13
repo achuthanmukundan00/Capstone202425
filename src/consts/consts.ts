@@ -9,7 +9,7 @@ export const MAX_VECTOR_LENGTH = 30; // Maximum length for the vectors (to preve
 export const MAG_FORCE_ARROW_FACTOR = 500000; // Scaling factor for drawing magnetic force arrows
 
 // Colors
-export const MAG_FORCE_ARROW_COLOUR = 0x6832a8;
+export const MAG_FORCE_ARROW_COLOUR = 0xff7f00;
 
 // Animation
 export const ANIMATION_SPEED = 8e-2;
