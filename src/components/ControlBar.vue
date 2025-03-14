@@ -7,16 +7,10 @@
     <div class="mode-toggle">
       <label>Mode:</label>
       <div class="toggle-buttons">
-        <button
-          :class="['mode-button', { active: mode === 'electric' }]"
-          @click="setMode('electric')"
-        >
+        <button :class="['mode-button', { active: mode === 'electric' }]" @click="setMode('electric')">
           Electric
         </button>
-        <button
-          :class="['mode-button', { active: mode === 'magnetic' }]"
-          @click="setMode('magnetic')"
-        >
+        <button :class="['mode-button', { active: mode === 'magnetic' }]" @click="setMode('magnetic')">
           Magnetic
         </button>
       </div>
@@ -30,36 +24,15 @@
         </button>
       </div>
 
-      <RangeSlider
-        v-model="chargeValueNum"
-        :min="CHARGE_MAGNITUDE_BOUNDS.MIN"
-        :max="CHARGE_MAGNITUDE_BOUNDS.MAX"
-        :step="CHARGE_MAGNITUDE_BOUNDS.STEP"
-        label="Charge Magnitude"
-        unit="C"
-        :precision="1"
-      />
+      <RangeSlider v-model="chargeValueNum" :min="CHARGE_MAGNITUDE_BOUNDS.MIN" :max="CHARGE_MAGNITUDE_BOUNDS.MAX"
+        :step="CHARGE_MAGNITUDE_BOUNDS.STEP" label="Charge Magnitude" unit="C" :precision="1" />
 
       <template v-if="mode === 'magnetic'">
-        <RangeSlider
-          v-model="magneticFieldValueNum"
-          :min="MAGNETIC_FIELD_BOUNDS.MIN"
-          :max="MAGNETIC_FIELD_BOUNDS.MAX"
-          :step="MAGNETIC_FIELD_BOUNDS.STEP"
-          label="Magnetic Field Strength"
-          unit="T"
-          :precision="1"
-        />
+        <RangeSlider v-model="magneticFieldValueNum" :min="MAGNETIC_FIELD_BOUNDS.MIN" :max="MAGNETIC_FIELD_BOUNDS.MAX"
+          :step="MAGNETIC_FIELD_BOUNDS.STEP" label="Magnetic Field Strength" unit="T" :precision="1" />
 
-        <RangeSlider
-          v-model="velocityMagnitudeNum"
-          :min="VELOCITY_BOUNDS.MIN"
-          :max="VELOCITY_BOUNDS.MAX"
-          :step="VELOCITY_BOUNDS.STEP"
-          label="Velocity"
-          unit="m/s"
-          :precision="0"
-        />
+        <RangeSlider v-model="velocityMagnitudeNum" :min="VELOCITY_BOUNDS.MIN" :max="VELOCITY_BOUNDS.MAX"
+          :step="VELOCITY_BOUNDS.STEP" label="Velocity" unit="m/s" :precision="0" />
 
         <div class="button-group">
           <button class="action-button start-button" @click="startAnimation">Start Animation</button>
@@ -70,14 +43,8 @@
           <div class="velocity-inputs">
             <div class="velocity-input">
               <label>Magnitude:</label>
-              <input
-                type="number"
-                v-model="velocityMagnitudeNum"
-                min="0"
-                step="0.1"
-                class="input-field"
-                placeholder="Speed"
-              />
+              <input type="number" v-model="velocityMagnitudeNum" min="0" step="0.1" class="input-field"
+                placeholder="Speed" />
             </div>
           </div>
           <div class="velocity-direction">
@@ -85,27 +52,13 @@
             <div class="direction-inputs">
               <div class="direction-input">
                 <label>X:</label>
-                <input
-                  type="number"
-                  v-model="velocityDirectionX"
-                  step="0.1"
-                  min="-1"
-                  max="1"
-                  class="input-field"
-                  placeholder="-1 to 1"
-                />
+                <input type="number" v-model="velocityDirectionX" step="0.1" min="-1" max="1" class="input-field"
+                  placeholder="-1 to 1" />
               </div>
               <div class="direction-input">
                 <label>Y:</label>
-                <input
-                  type="number"
-                  v-model="velocityDirectionY"
-                  step="0.1"
-                  min="-1"
-                  max="1"
-                  class="input-field"
-                  placeholder="-1 to 1"
-                />
+                <input type="number" v-model="velocityDirectionY" step="0.1" min="-1" max="1" class="input-field"
+                  placeholder="-1 to 1" />
               </div>
             </div>
           </div>
@@ -113,14 +66,8 @@
 
         <div class="form-group">
           <label for="magField">Uniform Magnetic Field (T):</label>
-          <input
-            type="number"
-            id="magField"
-            v-model="magneticFieldValueNum"
-            step="0.1"
-            class="input-field"
-            placeholder="e.g. 1.0 (Tesla)"
-          />
+          <input type="number" id="magField" v-model="magneticFieldValueNum" step="0.1" class="input-field"
+            placeholder="e.g. 1.0 (Tesla)" />
         </div>
 
         <div class="form-group">
@@ -135,19 +82,11 @@
         <label>Polarity:</label>
         <div class="polarity-controls">
           <label>
-            <input
-              type="radio"
-              v-model="polarity"
-              value="positive"
-            />
+            <input type="radio" v-model="polarity" value="positive" />
             Positive (+)
           </label>
           <label>
-            <input
-              type="radio"
-              v-model="polarity"
-              value="negative"
-            />
+            <input type="radio" v-model="polarity" value="negative" />
             Negative (-)
           </label>
         </div>
@@ -155,31 +94,25 @@
 
       <div class="button-group">
         <!-- Add Button -->
-        <button
-          class="action-button add-button"
-          :disabled="!isValid || selectedChargeExists"
-          :class="{ 'active': !selectedChargeExists }"
-          @click="handleAddCharge"
-        >
+        <button class="action-button add-button" :disabled="!isValid || selectedChargeExists"
+          :class="{ 'active': !selectedChargeExists }" @click="handleAddCharge">
           Add Charge
         </button>
 
         <!-- Edit Button -->
-        <button
-          class="action-button edit-button"
-          :disabled="!isValid || !selectedChargeExists"
-          @click="handleEditCharge"
-        >
+        <button class="action-button edit-button" :disabled="!isValid || !selectedChargeExists"
+          @click="handleEditCharge">
           Edit Charge
         </button>
 
         <!-- Delete Button -->
-        <button
-          class="action-button delete-button"
-          :disabled="!selectedChargeExists"
-          @click="handleDeleteCharge"
-        >
+        <button class="action-button delete-button" :disabled="!selectedChargeExists" @click="handleDeleteCharge">
           Delete Charge
+        </button>
+
+        <!-- Colorblind Button -->
+        <button class="action-button colorblind-toggle" @click="toggleColorblindMode">
+          Colorblind Mode: {{ selectedColorblindMode }}
         </button>
       </div>
     </div>
@@ -367,6 +300,22 @@ const velocityMagnitudeNum = computed({
 const handleDeselect = () => {
   chargesStore.setSelectedCharge(null);
   resetForm();
+};
+
+// Add available colorblind modes (you can add more as needed)
+const colorblindModes = ref(["default", "protanopia", "deuteranopia", "tritanopia"]);
+const selectedColorblindMode = ref("default");
+
+// Toggle function cycles through the modes
+const toggleColorblindMode = () => {
+  const currentIndex = colorblindModes.value.indexOf(selectedColorblindMode.value);
+  const nextIndex = (currentIndex + 1) % colorblindModes.value.length;
+  selectedColorblindMode.value = colorblindModes.value[nextIndex];
+
+  // Update the document body (or a wrapper element) with the new mode's class.
+  // This will allow CSS rules to apply different color schemes.
+  document.body.classList.remove(...colorblindModes.value);
+  document.body.classList.add(selectedColorblindMode.value);
 };
 </script>
 
@@ -577,4 +526,27 @@ const handleDeselect = () => {
   background: #e0e0e0;
   color: #333;
 }
+
+/* Default styling (already in your styles) */
+.controls-container {
+  background-color: #f5f5f5;
+  /* ... other properties ... */
+}
+
+/* Protanopia friendly mode */
+body.protanopia .controls-container {
+  background-color: #e0e0e0;
+  /* Adjust text colors and other styles as needed */
+}
+
+/* Deuteranopia friendly mode */
+body.deuteranopia .controls-container {
+  background-color: #d0d0d0;
+}
+
+/* Tritanopia friendly mode */
+body.tritanopia .controls-container {
+  background-color: #c0c0c0;
+}
+
 </style>
