@@ -13,6 +13,7 @@ import {
   ARROWHEAD_LENGTH,
   MAG_FORCE_ARROW_COLOUR,
   MAG_FORCE_ARROW_FACTOR,
+  VELOCITY_ARROW_COLOUR,
 } from '../consts'
 
 const MIN_ALPHA = 0.15
@@ -157,6 +158,21 @@ export function drawMagneticForce(
   arrow.beginFill(0x6832a8)
   arrow.endFill()
   app.stage.addChild(arrow)
+
+  // Create a label "V" near the arrow
+  const forceLabel = new PIXI.Text("F", {
+    fontSize: 24,
+    fill: 0xffffff, // White color for contrast
+    fontWeight: "bold",
+  });
+
+  forceLabel.name = `forceVector-label-${charge.id}`;
+
+  // Position the label slightly offset from the arrow tip
+  forceLabel.x = endX + 10; // Offset for better visibility
+  forceLabel.y = endY - 10;
+
+  app.stage.addChild(forceLabel);
 }
 
 export function drawMagneticField(
@@ -205,5 +221,86 @@ export function drawMagneticForcesOnAllCharges(
 
   chargesStore.charges.forEach(charge => {
     drawMagneticForce(app!, charge, chargesStore.magneticField)
+  })
+}
+
+export function drawVelocity(
+  app: PIXI.Application,
+  charge: Charge,
+) {
+  console.log("We be drawin")
+  app.stage.children
+    .filter(child => child.name === `velocityVector-${charge.id}`)
+    .forEach(child => app.stage.removeChild(child))
+
+  const scaledVelocity = {
+    x: (charge.velocity.direction.x / charge.velocity.magnitude) * VECTOR_LENGTH_SCALE,
+    y: (charge.velocity.direction.y / charge.velocity.magnitude) * VECTOR_LENGTH_SCALE
+  }
+  const length =
+    Math.min(
+      Math.sqrt(
+        scaledVelocity.x ** 2 + scaledVelocity.y ** 2,
+      ),
+      MAX_VECTOR_LENGTH,
+    ) / VECTOR_LENGTH_SCALE
+
+  const normalizedVelocity = {
+    x: (scaledVelocity.x / length) * length,
+    y: (scaledVelocity.y / length) * length,
+  }
+  
+  const arrow = new PIXI.Graphics()
+  arrow.name = `velocityVector-${charge.id}`
+  // Ensure arrows are rendered behind charges
+  arrow.zIndex = 0
+  arrow.lineStyle(10, VELOCITY_ARROW_COLOUR, 1)
+  const startX = charge.position.x
+  const startY = charge.position.y
+  const endX = startX + MAG_FORCE_ARROW_FACTOR * normalizedVelocity.x
+  const endY = startY + MAG_FORCE_ARROW_FACTOR * normalizedVelocity.y
+  arrow.moveTo(startX, startY)
+  arrow.lineTo(endX, endY)
+  const angle = Math.atan2(normalizedVelocity.y, normalizedVelocity.x)
+  arrow.lineTo(
+    endX - ARROWHEAD_LENGTH * Math.cos(angle - Math.PI / 6),
+    endY - ARROWHEAD_LENGTH * Math.sin(angle - Math.PI / 6),
+  )
+  arrow.moveTo(endX, endY)
+  arrow.lineTo(
+    endX - ARROWHEAD_LENGTH * Math.cos(angle + Math.PI / 6),
+    endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6),
+  )
+  arrow.beginFill(0xffffff)
+  arrow.endFill()
+  app.stage.addChild(arrow)
+
+  // Create a label "V" near the arrow
+  const velocityLabel = new PIXI.Text("V", {
+    fontSize: 24,
+    fill: 0xffffff, // White color for contrast
+    fontWeight: "bold",
+  });
+
+  velocityLabel.name = `velocityVector-label-${charge.id}`;
+
+  // Position the label slightly offset from the arrow tip
+  velocityLabel.x = endX + 10; // Offset for better visibility
+  velocityLabel.y = endY - 10;
+
+  app.stage.addChild(velocityLabel);
+}
+
+export function drawVelocityOnAllCharges(
+  app: PIXI.Application,
+  chargesStore: ChargesStore,
+) {
+  if (!app) return
+  app.stage.children
+    .filter(child => child.name?.startsWith('velocityVector-'))
+    .forEach(child => app!.stage.removeChild(child))
+  
+  chargesStore.charges.forEach(charge => {
+    drawVelocity(app!, charge)
   })
 }

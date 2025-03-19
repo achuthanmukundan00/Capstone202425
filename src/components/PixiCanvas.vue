@@ -7,7 +7,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { useChargesStore } from '@/stores/charges';
-import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges } from '@/utils/drawingUtils';
+import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges } from '@/utils/drawingUtils';
 import { calculateMagneticForce } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
 
@@ -144,6 +144,7 @@ onMounted(async () => {
       } else {
         drawMagneticField(app!, chargesStore.magneticField);
         drawMagneticForcesOnAllCharges(app!, chargesStore);
+        drawVelocityOnAllCharges(app!, chargesStore);
       }
       updateChargesOnCanvas(newCharges);
     },
@@ -164,6 +165,7 @@ onMounted(async () => {
       } else {
         drawMagneticField(app!, chargesStore.magneticField);
         drawMagneticForcesOnAllCharges(app!, chargesStore);
+        drawVelocityOnAllCharges(app!, chargesStore);
       }
     }
   );
@@ -174,6 +176,7 @@ onMounted(async () => {
       if (chargesStore.mode === 'magnetic') {
         drawMagneticField(app!, chargesStore.magneticField)
         drawMagneticForcesOnAllCharges(app!, chargesStore);
+        drawVelocityOnAllCharges(app!, chargesStore);
       }
     },
     { deep: true, immediate: true }
@@ -205,6 +208,7 @@ const resize = () => {
     } else {
       drawMagneticField(app!, chargesStore.magneticField)
       drawMagneticForcesOnAllCharges(app!, chargesStore);
+      drawVelocityOnAllCharges(app!, chargesStore);
     }
     updateChargesOnCanvas(chargesStore.charges);
   }
