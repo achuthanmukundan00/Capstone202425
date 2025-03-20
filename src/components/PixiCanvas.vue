@@ -7,7 +7,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { useChargesStore } from '@/stores/charges';
-import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges } from '@/utils/drawingUtils';
+import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges, removeFields} from '@/utils/drawingUtils';
 import { calculateMagneticForce } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
 
@@ -140,8 +140,10 @@ onMounted(async () => {
     () => chargesStore.charges,
     (newCharges) => {
       if (chargesStore.mode === 'electric') {
+        removeFields(app!);
         drawElectricField(app!, newCharges);
       } else {
+        removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField);
         drawMagneticForcesOnAllCharges(app!, chargesStore);
         drawVelocityOnAllCharges(app!, chargesStore);
@@ -161,8 +163,10 @@ onMounted(async () => {
         .forEach(child => app!.stage.removeChild(child));
 
       if (newMode === 'electric') {
+        removeFields(app!);
         drawElectricField(app, chargesStore.charges);
       } else {
+        removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField);
         drawMagneticForcesOnAllCharges(app!, chargesStore);
         drawVelocityOnAllCharges(app!, chargesStore);
@@ -174,6 +178,7 @@ onMounted(async () => {
     () => chargesStore.magneticField,
     () => {
       if (chargesStore.mode === 'magnetic') {
+        removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField)
         drawMagneticForcesOnAllCharges(app!, chargesStore);
         drawVelocityOnAllCharges(app!, chargesStore);
@@ -204,8 +209,10 @@ const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
     if (chargesStore.mode === 'electric') {
+      removeFields(app!);
       drawElectricField(app, chargesStore.charges);
     } else {
+      removeFields(app!);
       drawMagneticField(app!, chargesStore.magneticField)
       drawMagneticForcesOnAllCharges(app!, chargesStore);
       drawVelocityOnAllCharges(app!, chargesStore);
