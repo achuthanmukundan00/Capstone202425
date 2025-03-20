@@ -19,6 +19,15 @@ const MIN_ALPHA = 0.15
 const MAX_ALPHA = 1.0
 const LOG_SCALE_FACTOR = 2
 
+export function removeFields(app: PIXI.Application) {
+  app.stage.children
+    .filter(child => child.name === 'magneticFieldSymbol')
+    .forEach(child => app.stage.removeChild(child));
+  app.stage.children
+    .filter(child => child.name === 'fieldVector')
+    .forEach(child => app.stage.removeChild(child));
+}
+
 export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
   app.stage.children
     .filter(child => child.name === 'fieldVector')
