@@ -116,6 +116,8 @@ export const useChargesStore = defineStore('charges', {
       this.charges.forEach(charge => {
         charge.position = { x: charge.preAnimationPosition?.x ?? 300, y: charge.preAnimationPosition?.y ?? 400 };
         charge.velocity = { magnitude: charge.preAnimationVelocity?.magnitude ?? 0, direction: charge.preAnimationVelocity?.direction ?? { x: 0, y: 0}};
+        delete charge.preAnimationPosition;
+        delete charge.preAnimationVelocity;
       });
     },
   },
