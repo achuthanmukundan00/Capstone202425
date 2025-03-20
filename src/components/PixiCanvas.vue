@@ -159,7 +159,7 @@ onMounted(async () => {
     (newMode) => {
       if (!app) return;
       app.stage.children
-        .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-'))
+        .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-') || child.name.startsWith('velocityVector-'))
         .forEach(child => app!.stage.removeChild(child));
 
       if (newMode === 'electric') {
