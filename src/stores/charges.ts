@@ -13,6 +13,10 @@ export interface Charge {
   }
   force?: { x: number; y: number; z: number } // Optional: Magnetic force vector
   preAnimationPosition?: { x: number; y: number } // position on canvas before animation starts
+  preAnimationVelocity?: {
+    magnitude: number
+    direction: { x: number; y: number }
+  }
 }
 
 // Add mode type
@@ -95,8 +99,15 @@ export const useChargesStore = defineStore('charges', {
 
     startAnimation() {
       this.charges.forEach(charge => {
-        charge.preAnimationPosition = { x: charge.position.x, y: charge.position.y }
-      })
+        charge.preAnimationPosition = { x: charge.position.x, y: charge.position.y };
+        charge.preAnimationVelocity = { 
+          magnitude: charge.velocity.magnitude, 
+          direction: { 
+            x: charge.velocity.direction.x, 
+            y: charge.velocity.direction.y 
+          }
+        };
+      });
       this.isAnimating = true;
     },
 
@@ -104,7 +115,7 @@ export const useChargesStore = defineStore('charges', {
       this.isAnimating = false;
       this.charges.forEach(charge => {
         charge.position = { x: charge.preAnimationPosition?.x ?? 300, y: charge.preAnimationPosition?.y ?? 400 };
-        charge.velocity = { magnitude: 0, direction: { x: 0, y: 0 } };
+        charge.velocity = { magnitude: charge.preAnimationVelocity?.magnitude ?? 0, direction: charge.preAnimationVelocity?.direction ?? { x: 0, y: 0}};
       });
     },
   },
