@@ -175,7 +175,7 @@ export function drawMagneticForce(
     fontWeight: "bold",
   });
 
-  forceLabel.name = `forceVector-label-${charge.id}`;
+  forceLabel.name = `magneticForceVector-label-${charge.id}`;
 
   // Position the label slightly offset from the arrow tip
   forceLabel.x = endX + 10; // Offset for better visibility
