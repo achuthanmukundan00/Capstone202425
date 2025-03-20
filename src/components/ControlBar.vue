@@ -39,30 +39,33 @@
           <button class="action-button reset-button" @click="resetAnimation">Reset Animation</button>
         </div>
         <div class="form-group">
-          <label>Velocity:</label>
-          <div class="velocity-inputs">
-            <div class="velocity-input">
-              <label>Magnitude:</label>
-              <input type="number" v-model="velocityMagnitudeNum" min="0" step="0.1" class="input-field"
-                placeholder="Speed" />
-            </div>
-          </div>
-          <div class="velocity-direction">
-            <label>Direction:</label>
-            <div class="direction-inputs">
-              <div class="direction-input">
-                <label>X:</label>
-                <input type="number" v-model="velocityDirectionX" step="0.1" min="-1" max="1" class="input-field"
-                  placeholder="-1 to 1" />
-              </div>
-              <div class="direction-input">
-                <label>Y:</label>
-                <input type="number" v-model="velocityDirectionY" step="0.1" min="-1" max="1" class="input-field"
-                  placeholder="-1 to 1" />
-              </div>
-            </div>
-          </div>
+    <label>Velocity:</label>
+    <div class="velocity-inputs">
+      <div class="velocity-input">
+        <label>Magnitude:</label>
+        <input type="number" v-model="velocityMagnitude" min="0" step="0.1" class="input-field"
+               placeholder="Speed" @focus="checkChargeSelected" />
+      </div>
+    </div>
+    <div class="velocity-direction">
+      <label>Direction:</label>
+      <div class="direction-inputs">
+        <div class="direction-input">
+          <label>X:</label>
+          <input type="number" v-model="velocityDirectionX" step="0.1" min="-1" max="1" class="input-field"
+                 placeholder="-1 to 1" @focus="checkChargeSelected" />
         </div>
+        <div class="direction-input">
+          <label>Y:</label>
+          <input type="number" v-model="velocityDirectionY" step="0.1" min="-1" max="1" class="input-field"
+                 placeholder="-1 to 1" @focus="checkChargeSelected" />
+        </div>
+      </div>
+    </div>
+    <div v-if="velocityInputError" class="error-message">
+      {{ velocityInputError }}
+    </div>
+  </div>
 
         <div class="form-group">
           <label for="magField">Uniform Magnetic Field (T):</label>
@@ -126,6 +129,7 @@ import RangeSlider from './ui/RangeSlider.vue';
 import { CHARGE_MAGNITUDE_BOUNDS, MAGNETIC_FIELD_BOUNDS, VELOCITY_BOUNDS } from '@/consts';
 
 const chargesStore = useChargesStore();
+const velocityInputError = ref('');
 
 const startAnimation = () => {
   chargesStore.startAnimation();
@@ -133,6 +137,15 @@ const startAnimation = () => {
 
 const resetAnimation = () => {
   chargesStore.resetAnimation();
+};
+
+const checkChargeSelected = (event: FocusEvent) => {
+  if (!selectedChargeExists.value) {
+    velocityInputError.value = 'Please select a charge first.';
+    (event.target as HTMLInputElement).blur();
+  } else {
+    velocityInputError.value = '';
+  }
 };
 
 // Form state
@@ -152,6 +165,12 @@ const isValid = computed(() => {
 
 const selectedChargeExists = computed(() => {
   return chargesStore.selectedChargeId !== null;
+});
+
+watch(selectedChargeExists, (newVal) => {
+  if (newVal) {
+    velocityInputError.value = '';
+  }
 });
 
 // const isEditing = computed(() => {
@@ -498,6 +517,12 @@ const toggleColorblindMode = () => {
   padding: 8px 12px;
   background: #f5f5f5;
   border-radius: 4px;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 0.9em;
+  margin-top: 5px;
 }
 
 .selection-label {
