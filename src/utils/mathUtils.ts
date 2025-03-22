@@ -1,4 +1,5 @@
 import type { Charge } from '@/stores/charges'
+import { useChargesStore } from '@/stores/charges'
 import { K } from '../consts'
 
 // Calculate electric field at a given point due to a charge
@@ -71,4 +72,25 @@ export function normalizeAndScale(
     y: (vector.y / magnitude) * scale,
     z: vector.z !== undefined ? (vector.z / magnitude) * scale : undefined,
   }
+}
+
+export function getNetElectricFieldAtPoint(point: { x: number; y: number }) {
+  const store = useChargesStore()
+  const charges = store.charges
+
+  // eslint-disable-next-line
+  let netField = { x: 0, y: 0 }
+
+  charges.forEach(charge => {
+    const field = calculateElectricField(
+      charge.position,
+      charge.magnitude,
+      point,
+      charge.polarity === 'positive'
+    )
+    netField.x += field.x
+    netField.y += field.y
+  })
+
+  return netField
 }
