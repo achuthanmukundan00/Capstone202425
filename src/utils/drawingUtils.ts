@@ -11,9 +11,7 @@ import {
   VECTOR_LENGTH_SCALE,
   MAX_VECTOR_LENGTH,
   ARROWHEAD_LENGTH,
-  MAG_FORCE_ARROW_COLOUR,
   MAG_FORCE_ARROW_FACTOR,
-  VELOCITY_ARROW_COLOUR,
 } from '../consts'
 
 const MIN_ALPHA = 0.15
@@ -23,13 +21,18 @@ const LOG_SCALE_FACTOR = 2
 export function removeFields(app: PIXI.Application) {
   app.stage.children
     .filter(child => child.name === 'magneticFieldSymbol')
-    .forEach(child => app.stage.removeChild(child));
+    .forEach(child => app.stage.removeChild(child))
   app.stage.children
     .filter(child => child.name === 'fieldVector')
-    .forEach(child => app.stage.removeChild(child));
+    .forEach(child => app.stage.removeChild(child))
 }
 
-export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
+export function drawElectricField(
+  app: PIXI.Application,
+  charges: Charge[],
+  //eslint-disable-next-line
+  colorPalette: any,
+) {
   app.stage.children
     .filter(child => child.name === 'fieldVector')
     .forEach(child => app.stage.removeChild(child))
@@ -97,7 +100,7 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
       arrow.name = 'fieldVector'
       // Set arrow zIndex low so charges render above them
       arrow.zIndex = 0
-      arrow.lineStyle(2, 0xffffff, alpha)
+      arrow.lineStyle(2, colorPalette.fieldVector, alpha)
       arrow.moveTo(x, y)
       const endX = x + normalizedVector.x
       const endY = y + normalizedVector.y
@@ -118,11 +121,12 @@ export function drawElectricField(app: PIXI.Application, charges: Charge[]) {
     }
   }
 }
-
 export function drawMagneticForce(
   app: PIXI.Application,
   charge: Charge,
   magneticField: { x: number; y: number; z: number },
+  //eslint-disable-next-line
+  colorPalette: any,
 ) {
   app.stage.children
     .filter(child => child.name === `magneticForceVector-${charge.id}`)
@@ -147,7 +151,7 @@ export function drawMagneticForce(
   arrow.name = `magneticForceVector-${charge.id}`
   // Ensure arrows are rendered behind charges
   arrow.zIndex = 0
-  arrow.lineStyle(10, MAG_FORCE_ARROW_COLOUR, 1)
+  arrow.lineStyle(10, colorPalette.magneticForceVector, 1)
   const startX = charge.position.x
   const startY = charge.position.y
   const endX = startX + MAG_FORCE_ARROW_FACTOR * normalizedForce.x
@@ -164,24 +168,24 @@ export function drawMagneticForce(
     endX - ARROWHEAD_LENGTH * Math.cos(angle + Math.PI / 6),
     endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6),
   )
-  arrow.beginFill(0x6832a8)
+  arrow.beginFill(colorPalette.magneticForceVector)
   arrow.endFill()
   app.stage.addChild(arrow)
 
   // Create a label "V" near the arrow
-  const forceLabel = new PIXI.Text("F", {
+  const forceLabel = new PIXI.Text('F', {
     fontSize: 24,
-    fill: 0xffffff, // White color for contrast
-    fontWeight: "bold",
-  });
+    fill: colorPalette.magneticForceVector, // White color for contrast
+    fontWeight: 'bold',
+  })
 
-  forceLabel.name = `magneticForceVector-label-${charge.id}`;
+  forceLabel.name = `magneticForceVector-label-${charge.id}`
 
   // Position the label slightly offset from the arrow tip
-  forceLabel.x = endX + 10; // Offset for better visibility
-  forceLabel.y = endY - 10;
+  forceLabel.x = endX + 10 // Offset for better visibility
+  forceLabel.y = endY - 10
 
-  app.stage.addChild(forceLabel);
+  app.stage.addChild(forceLabel)
 }
 
 export function drawMagneticField(
@@ -222,6 +226,8 @@ export function drawMagneticField(
 export function drawMagneticForcesOnAllCharges(
   app: PIXI.Application,
   chargesStore: ChargesStore,
+  //eslint-disable-next-line
+  colorPalette: any,
 ) {
   if (!app) return
   app.stage.children
@@ -229,28 +235,31 @@ export function drawMagneticForcesOnAllCharges(
     .forEach(child => app!.stage.removeChild(child))
 
   chargesStore.charges.forEach(charge => {
-    drawMagneticForce(app!, charge, chargesStore.magneticField)
+    drawMagneticForce(app!, charge, chargesStore.magneticField, colorPalette)
   })
 }
 
 export function drawVelocity(
   app: PIXI.Application,
   charge: Charge,
+  //eslint-disable-next-line
+  colorPalette: any,
 ) {
-  console.log("We be drawin")
   app.stage.children
     .filter(child => child.name === `velocityVector-${charge.id}`)
     .forEach(child => app.stage.removeChild(child))
 
   const scaledVelocity = {
-    x: (charge.velocity.direction.x / charge.velocity.magnitude) * VECTOR_LENGTH_SCALE,
-    y: (charge.velocity.direction.y / charge.velocity.magnitude) * VECTOR_LENGTH_SCALE
+    x:
+      (charge.velocity.direction.x / charge.velocity.magnitude) *
+      VECTOR_LENGTH_SCALE,
+    y:
+      (charge.velocity.direction.y / charge.velocity.magnitude) *
+      VECTOR_LENGTH_SCALE,
   }
   const length =
     Math.min(
-      Math.sqrt(
-        scaledVelocity.x ** 2 + scaledVelocity.y ** 2,
-      ),
+      Math.sqrt(scaledVelocity.x ** 2 + scaledVelocity.y ** 2),
       MAX_VECTOR_LENGTH,
     ) / VECTOR_LENGTH_SCALE
 
@@ -258,12 +267,12 @@ export function drawVelocity(
     x: (scaledVelocity.x / length) * length,
     y: (scaledVelocity.y / length) * length,
   }
-  
+
   const arrow = new PIXI.Graphics()
   arrow.name = `velocityVector-${charge.id}`
   // Ensure arrows are rendered behind charges
   arrow.zIndex = 0
-  arrow.lineStyle(10, VELOCITY_ARROW_COLOUR, 1)
+  arrow.lineStyle(10, colorPalette.velocityVector, 1)
   const startX = charge.position.x
   const startY = charge.position.y
   const endX = startX + MAG_FORCE_ARROW_FACTOR * normalizedVelocity.x
@@ -280,36 +289,38 @@ export function drawVelocity(
     endX - ARROWHEAD_LENGTH * Math.cos(angle + Math.PI / 6),
     endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6),
   )
-  arrow.beginFill(0xffffff)
+  arrow.beginFill(colorPalette.velocityVector)
   arrow.endFill()
   app.stage.addChild(arrow)
 
   // Create a label "V" near the arrow
-  const velocityLabel = new PIXI.Text("V", {
+  const velocityLabel = new PIXI.Text('V', {
     fontSize: 24,
-    fill: 0xffffff, // White color for contrast
-    fontWeight: "bold",
-  });
+    fill: colorPalette.velocityVector,
+    fontWeight: 'bold',
+  })
 
-  velocityLabel.name = `velocityVector-label-${charge.id}`;
+  velocityLabel.name = `velocityVector-label-${charge.id}`
 
   // Position the label slightly offset from the arrow tip
-  velocityLabel.x = endX + 10; // Offset for better visibility
-  velocityLabel.y = endY - 10;
+  velocityLabel.x = endX + 10 // Offset for better visibility
+  velocityLabel.y = endY - 10
 
-  app.stage.addChild(velocityLabel);
+  app.stage.addChild(velocityLabel)
 }
 
 export function drawVelocityOnAllCharges(
   app: PIXI.Application,
   chargesStore: ChargesStore,
+  //eslint-disable-next-line
+  colorPalette: any,
 ) {
   if (!app) return
   app.stage.children
     .filter(child => child.name?.startsWith('velocityVector-'))
     .forEach(child => app!.stage.removeChild(child))
-  
+
   chargesStore.charges.forEach(charge => {
-    drawVelocity(app!, charge)
+    drawVelocity(app!, charge, colorPalette)
   })
 }
