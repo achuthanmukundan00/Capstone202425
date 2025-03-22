@@ -1,7 +1,8 @@
 <template>
-  <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container"></div>
+    <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container">
+      <div class="field-readout">{{ fieldReadout }}</div>
+    </div>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
@@ -12,7 +13,6 @@ import { calculateMagneticForce } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
 import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
 
-const canvasRef = ref<HTMLDivElement | null>(null);
 const fieldReadout = ref('');
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
@@ -24,7 +24,7 @@ let app: PIXI.Application | null = null;
 const MOVEMENT_STEP = 10; // pixels per keypress
 
 function handleMouseMove(event: MouseEvent) {
-  const rect = canvasRef.value?.getBoundingClientRect()
+  const rect = canvasContainer.value?.getBoundingClientRect()
   if (!rect) return
 
   const x = event.clientX - rect.left
@@ -32,7 +32,7 @@ function handleMouseMove(event: MouseEvent) {
 
   const field = getNetElectricFieldAtPoint({ x, y })
 
-  fieldReadout.value = `Ex: ${field.x.toFixed(2)}, Ey: ${field.y.toFixed(2)}`
+  fieldReadout.value = `Ex: ${(field.x / 1e3).toFixed(2)} kN/C, Ey: ${(-1 * field.y / 1e3).toFixed(2)} kN/C`
 }
 
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -108,7 +108,7 @@ onMounted(async () => {
     height: window.innerHeight
   });
 
-  canvasRef.value?.addEventListener('mousemove', handleMouseMove);
+  canvasContainer.value?.addEventListener('mousemove', handleMouseMove);
 
   // Enable zIndex sorting so that graphics with higher zIndex render on top
   app.stage.sortableChildren = true;
@@ -213,7 +213,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  canvasRef.value?.removeEventListener('mousemove', handleMouseMove);
+  canvasContainer.value?.removeEventListener('mousemove', handleMouseMove);
   cancelAnimationFrame(animationFrameId);
 
   if (app) {
@@ -322,8 +322,23 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
 <style scoped>
 .canvas-container {
-  flex-grow: 1;
+  position: relative;
+  width: 100%;
   height: 100%;
+  flex-grow: 1;
   overflow: hidden;
+}
+
+.field-readout {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  font-family: monospace;
+  border-radius: 4px;
+  pointer-events: none;
 }
 </style>
