@@ -222,39 +222,18 @@ const selectedChargeExists = computed(() => {
 
 watch(selectedChargeExists, (newVal) => {
   if (newVal) {
-    velocityInputError.value = '';
-  }
-});
-
-// const isEditing = computed(() => {
-//   return selectedChargeExists.value;
-// });
-
-// Convert string values to numbers for the sliders
-const chargeValueNum = computed({
-  get: () => Number(chargeValue.value),
-  set: (val: number) => {
-    chargeValue.value = val.toString();
-    // Update selected charge if editing
-    if (chargesStore.selectedChargeId) {
-      chargesStore.updateCharge({
-        id: chargesStore.selectedChargeId,
-        magnitude: val,
-        polarity: polarity.value
-      });
+    const selectedCharge = chargesStore.charges.find(c => c.id === chargesStore.selectedChargeId);
+    if (selectedCharge) {
+      chargeValue.value = selectedCharge.magnitude.toString(); 
+      polarity.value = selectedCharge.polarity;
+      velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
+      velocityDirectionX.value = selectedCharge.velocity.direction.x.toString();
+      velocityDirectionY.value = selectedCharge.velocity.direction.y.toString();
     }
+    velocityInputError.value = '';
+  } else {
+    resetForm();
   }
-});
-
-// Magnetic Field State
-const magneticFieldValue = ref('0');
-const magneticFieldDirection = ref<'in' | 'out'>('out'); // Default: Out of the page
-
-// Watch for Magnetic Field Changes
-watch([magneticFieldValue, magneticFieldDirection], ([newValue, newDirection]) => {
-  const parsed = parseFloat(newValue) || 0;
-  const zComponent = newDirection === 'out' ? parsed : -parsed;
-  chargesStore.setMagneticField({ x: 0, y: 0, z: zComponent });
 });
 
 watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
@@ -282,6 +261,33 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
   });
 
   console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+});
+
+// Convert string values to numbers for the sliders
+const chargeValueNum = computed({
+  get: () => Number(chargeValue.value),
+  set: (val: number) => {
+    chargeValue.value = val.toString();
+    // Update selected charge if editing
+    if (chargesStore.selectedChargeId) {
+      chargesStore.updateCharge({
+        id: chargesStore.selectedChargeId,
+        magnitude: val,
+        polarity: polarity.value
+      });
+    }
+  }
+});
+
+// Magnetic Field State
+const magneticFieldValue = ref('0');
+const magneticFieldDirection = ref<'in' | 'out'>('out'); // Default: Out of the page
+
+// Watch for Magnetic Field Changes
+watch([magneticFieldValue, magneticFieldDirection], ([newValue, newDirection]) => {
+  const parsed = parseFloat(newValue) || 0;
+  const zComponent = newDirection === 'out' ? parsed : -parsed;
+  chargesStore.setMagneticField({ x: 0, y: 0, z: zComponent });
 });
 
 // Function to Toggle Magnetic Field Direction
@@ -345,6 +351,7 @@ const handleDeleteCharge = () => {
   resetForm();
 };
 
+// Update resetForm function to reset values to 0
 const resetForm = () => {
   chargeValue.value = '0';
   polarity.value = 'positive';

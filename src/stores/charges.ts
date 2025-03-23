@@ -56,8 +56,8 @@ export const useChargesStore = defineStore('charges', {
         polarity: charge.polarity,
         position: generateRandomPosition(),
         velocity: {
-          magnitude: 0,
-          direction: { x: 0, y: 0 }
+          magnitude: charge.velocity.magnitude || 1,
+          direction: { x: charge.velocity.direction.x || 0, y: charge.velocity.direction.y || 0 }
         },
       }
       this.charges.push(newCharge)
