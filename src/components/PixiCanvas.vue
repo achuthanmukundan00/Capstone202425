@@ -1,16 +1,19 @@
 <template>
-  <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container"></div>
+    <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container">
+      <div class="field-readout">{{ fieldReadout }}</div>
+    </div>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { useChargesStore } from '@/stores/charges';
-import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges, removeFields} from '@/utils/drawingUtils';
+import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges, removeFields } from '@/utils/drawingUtils';
 import { calculateMagneticForce } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
+import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
 
+const fieldReadout = ref('');
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
@@ -19,6 +22,18 @@ let animationFrameId: number;
 let app: PIXI.Application | null = null;
 
 const MOVEMENT_STEP = 10; // pixels per keypress
+
+function handleMouseMove(event: MouseEvent) {
+  const rect = canvasContainer.value?.getBoundingClientRect()
+  if (!rect) return
+
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+
+  const field = getNetElectricFieldAtPoint({ x, y })
+
+  fieldReadout.value = `Ex: ${(field.x / 1e3).toFixed(2)} kN/C, Ey: ${(-1 * field.y / 1e3).toFixed(2)} kN/C`
+}
 
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Tab') {
@@ -92,6 +107,8 @@ onMounted(async () => {
     width: window.innerWidth,
     height: window.innerHeight
   });
+
+  canvasContainer.value?.addEventListener('mousemove', handleMouseMove);
 
   // Enable zIndex sorting so that graphics with higher zIndex render on top
   app.stage.sortableChildren = true;
@@ -196,7 +213,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  canvasContainer.value?.removeEventListener('mousemove', handleMouseMove);
   cancelAnimationFrame(animationFrameId);
+
   if (app) {
     app.destroy(true, { children: true });
     app = null;
@@ -303,8 +322,23 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
 <style scoped>
 .canvas-container {
-  flex-grow: 1;
+  position: relative;
+  width: 100%;
   height: 100%;
+  flex-grow: 1;
   overflow: hidden;
+}
+
+.field-readout {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  font-family: monospace;
+  border-radius: 4px;
+  pointer-events: none;
 }
 </style>
