@@ -110,7 +110,14 @@ const updateChargeMotion = () => {
 
 onMounted(async () => {
   // Initialize PixiJS Application
-  app = new PIXI.Application();
+  app = new PIXI.Application({
+    resolution: window.devicePixelRatio || 1,
+    autoDensity: true,
+    antialias: true,
+    backgroundAlpha: 0,
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
   await app.init({
     width: window.innerWidth,
     height: window.innerHeight
@@ -258,6 +265,9 @@ onBeforeUnmount(() => {
 const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
+    app.renderer.resolution = window.devicePixelRatio || 1;
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+
     if (chargesStore.mode === 'electric') {
       removeFields(app!);
       drawElectricField(app, chargesStore.charges, palette.value);
