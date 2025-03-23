@@ -180,6 +180,10 @@ onMounted(async () => {
     }
   );
 
+  watch(() => settingsStore.dyslexiaMode, (enabled) => {
+    document.body.classList.toggle('dyslexia-font', enabled);
+  });
+
   // Watch for changes in the charges array
   watch(
     () => chargesStore.charges,
@@ -331,6 +335,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
     if (!text) {
       text = new PIXI.Text(polarity + charge.magnitude.toString() + 'C', {
+        fontFamily: settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins',
         fontSize: 14,
         fill: 0xffffff,
         align: 'center'
@@ -339,6 +344,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       graphic.addChild(text);
     } else {
       text.text = polarity + charge.magnitude.toString() + 'C';
+      text.style.fontFamily = settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins';
     }
 
     text.anchor.set(0.5);
