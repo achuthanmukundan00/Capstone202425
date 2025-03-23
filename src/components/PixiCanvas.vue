@@ -49,7 +49,7 @@ function handleMouseMove(event: MouseEvent) {
     }
 
     const force = calculateMagneticForce(selected, chargesStore.magneticField);
-    fieldReadout.value = `Fx: ${force.x.toFixed(2)} N, Fy: ${force.y.toFixed(2)} N`;
+    fieldReadout.value = `Fx: ${force.x.toFixed(2)} N, Fy: ${-force.y.toFixed(2)} N`;
   }
 }
 
