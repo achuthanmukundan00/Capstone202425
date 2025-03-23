@@ -46,8 +46,8 @@ export const useChargesStore = defineStore('charges', {
         polarity: charge.polarity,
         position: { x: 400, y: 300 }, // Place charge in the center of canvas initially
         velocity: {
-          magnitude: 0,
-          direction: { x: 0, y: 0 }
+          magnitude: charge.velocity.magnitude || 1,
+          direction: { x: charge.velocity.direction.x || 0, y: charge.velocity.direction.y || 0 }
         },
       }
       this.charges.push(newCharge)
