@@ -39,4 +39,9 @@ body {
 #app.dyslexia-font {
   font-family: 'OpenDyslexic', sans-serif;
 }
+
+body.dyslexia-font,
+body.dyslexia-font * {
+  font-family: 'OpenDyslexic', sans-serif !important;
+}
 </style>
