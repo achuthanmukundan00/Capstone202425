@@ -281,7 +281,7 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
     }
   });
 
-  // console.log(`🚀 Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+  console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
 });
 
 // Function to Toggle Magnetic Field Direction

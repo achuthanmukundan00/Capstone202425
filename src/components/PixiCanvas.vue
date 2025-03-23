@@ -240,8 +240,7 @@ onMounted(async () => {
   watch(
     () => settingsStore.colorblindMode,
     (newMode) => {
-      // console.log('Colorblind mode changed to:', newMode);
-      // console.log(palette.value);
+      console.log('Colorblind mode changed to:', newMode);
 
       if (chargesStore.mode === 'electric') {
         removeFields(app!);

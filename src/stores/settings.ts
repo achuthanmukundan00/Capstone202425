@@ -8,7 +8,6 @@ export const useSettingsStore = defineStore('settings', {
   }),
   actions: {
     setColorblindMode(mode: 'default' | 'protanopia' | 'deuteranopia' | 'tritanopia') {
-      // console.log('Changing colorblind mode to:', mode)
       this.colorblindMode = mode
     },
     setDyslexiaMode(val: boolean) {
