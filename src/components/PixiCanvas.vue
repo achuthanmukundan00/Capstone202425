@@ -25,6 +25,7 @@ const fieldReadout = ref('');
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
+const trailGraphicsMap = new Map<string, PIXI.Graphics>(); // keep track of drawn trails (k: charge.id, value: trail)
 
 let animationFrameId: number;
 let app: PIXI.Application | null = null;
@@ -105,8 +106,55 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
+const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
+  // Initialize the trail array if it doesn't exist
+  if (!charge.trail) {
+    charge.trail = [];
+  }
+
+  if (charge.trailSampleCounter === undefined) {
+    charge.trailSampleCounter = 0;
+  }
+
+  const minDistance = 25; // Minimum distance traveled before taking a sample
+
+  // Calculate distance from last sampled position
+  if (charge.trail.length === 0 || 
+    Math.hypot(
+      charge.position.x - charge.trail[charge.trail.length - 1].x, 
+      charge.position.y - charge.trail[charge.trail.length - 1].y
+    ) >= minDistance) {
+
+    // Push a snapshot of the position
+    charge.trail.push({ x: charge.position.x, y: charge.position.y });
+  }
+
+  // Clear the previous trail drawing
+  trailGraphics.clear();
+
+  // Option 1: Draw small dots along the trail
+  const dotRadius = 8;
+  trailGraphics.beginFill(0xffffff, 0.7);
+  for (const pos of charge.trail) {
+    trailGraphics.drawCircle(pos.x, pos.y, dotRadius);
+  }
+  trailGraphics.endFill();
+};
+
+const clearTrails = () => {
+  trailGraphicsMap.forEach(trailGraphic => {
+    if (app) {
+      app.stage.removeChild(trailGraphic);
+    }
+  });
+  trailGraphicsMap.clear();
+};
+
 const updateChargeMotion = () => {
-  if (!chargesStore.isAnimating) return;
+  if (!chargesStore.isAnimating) {
+    clearTrails();
+    return;
+  }
 
   chargesStore.charges.forEach(charge => {
     const force = calculateMagneticForce(charge, chargesStore.magneticField);
@@ -114,6 +162,17 @@ const updateChargeMotion = () => {
     charge.velocity.direction.y += force.y * FORCE_SCALING;
     charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
     charge.position.y += charge.velocity.direction.y * ANIMATION_SPEED;
+
+    let trailGraphics = trailGraphicsMap.get(charge.id);
+    if (!trailGraphics) {
+      trailGraphics = new PIXI.Graphics();
+      // Ensure the trail renders behind the charge
+      trailGraphics.zIndex = 5;
+      trailGraphicsMap.set(charge.id, trailGraphics);
+      app!.stage.addChild(trailGraphics);
+    }
+
+    updateChargeTrail(charge, trailGraphics);
   });
   animationFrameId = requestAnimationFrame(updateChargeMotion);
 };

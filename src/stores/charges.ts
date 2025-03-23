@@ -17,6 +17,8 @@ export interface Charge {
     magnitude: number
     direction: { x: number; y: number }
   }
+  trail?: { x: number; y: number }[]
+  trailSampleCounter?: number
 }
 
 // Add mode type
@@ -118,6 +120,8 @@ export const useChargesStore = defineStore('charges', {
         charge.velocity = { magnitude: charge.preAnimationVelocity?.magnitude ?? 0, direction: charge.preAnimationVelocity?.direction ?? { x: 0, y: 0}};
         delete charge.preAnimationPosition;
         delete charge.preAnimationVelocity;
+        charge.trail = [];
+        delete charge.trailSampleCounter;
       });
     },
   },
