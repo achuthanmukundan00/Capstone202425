@@ -1,8 +1,31 @@
 <template>
   <div class="controls-container">
-    <div class="logo">
-      Cynthia.EM
+    <div class="header-bar">
+      <div class="logo">Cynthia.EM</div>
+      <button class="outlined-icon-button" @click="isSettingsModalOpen = true" title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          class="lucide lucide-cog">
+          <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+          <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+          <path d="M12 2v2" />
+          <path d="M12 22v-2" />
+          <path d="m17 20.66-1-1.73" />
+          <path d="M11 10.27 7 3.34" />
+          <path d="m20.66 17-1.73-1" />
+          <path d="m3.34 7 1.73 1" />
+          <path d="M14 12h8" />
+          <path d="M2 12h2" />
+          <path d="m20.66 7-1.73 1" />
+          <path d="m3.34 17 1.73-1" />
+          <path d="m17 3.34-1 1.73" />
+          <path d="m11 13.73-4 6.93" />
+        </svg>
+        <span class="settings-label">Settings</span>
+      </button>
     </div>
+
+
 
     <div class="mode-toggle">
       <label>Mode:</label>
@@ -35,30 +58,19 @@
           :step="VELOCITY_BOUNDS.STEP" label="Velocity" unit="m/s" :precision="0" />
 
         <div class="button-group">
-          <button
-            class="action-button start-button"
-            :class="{ active: animationMode === AnimationMode.start }"
+          <button class="action-button start-button" :class="{ active: animationMode === AnimationMode.start }"
             @click="startAnimation"
-            :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)"
-          >
+            :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)">
             Start Animation
           </button>
 
-          <button
-            class="action-button stop-button"
-            :class="{ active: animationMode === AnimationMode.stop }"
-            @click="stopAnimation"
-            :disabled="animationMode !== AnimationMode.start"
-          >
+          <button class="action-button stop-button" :class="{ active: animationMode === AnimationMode.stop }"
+            @click="stopAnimation" :disabled="animationMode !== AnimationMode.start">
             Stop Animation
           </button>
 
-          <button
-            class="action-button reset-button"
-            :class="{ active: animationMode === AnimationMode.reset }"
-            @click="resetAnimation"
-            :disabled="animationMode !== AnimationMode.stop"
-          >
+          <button class="action-button reset-button" :class="{ active: animationMode === AnimationMode.reset }"
+            @click="resetAnimation" :disabled="animationMode !== AnimationMode.stop">
             Reset Animation
           </button>
         </div>
@@ -136,23 +148,43 @@
         <button class="action-button delete-button" :disabled="!selectedChargeExists" @click="handleDeleteCharge">
           Delete Charge
         </button>
-
-        <!-- Colorblind Button -->
-        <label>Colorblind mode</label>
-        <button v-for="mode in colorblindModes" :key="mode" :class="{ active: settingsStore.colorblindMode === mode }"
-          @click="settingsStore.setColorblindMode(mode)">
-          {{ mode }}
-        </button>
-
-        <!-- Dyslexia Toggle -->
-        <label>Dyslexia-friendly font</label>
-        <button @click="toggleDyslexiaFont" :class="{ active: settingsStore.dyslexiaMode }">
-          {{ settingsStore.dyslexiaMode ? 'On' : 'Off' }}
-        </button>
-
       </div>
     </div>
   </div>
+
+  <template v-if="isSettingsModalOpen">
+    <div class="settings-modal-overlay" @click.self="isSettingsModalOpen = false">
+      <div class="settings-modal">
+        <button class="close-modal" @click="isSettingsModalOpen = false">×</button>
+        <h2>Accessibility Settings</h2>
+
+        <div class="setting-section">
+          <label for="colorblind-mode">Colorblind Mode:</label>
+          <select id="colorblind-mode" v-model="settingsStore.colorblindMode"
+            @change="settingsStore.setColorblindMode(settingsStore.colorblindMode)">
+            <option v-for="mode in colorblindModes" :key="mode" :value="mode">
+              {{ mode.charAt(0).toUpperCase() + mode.slice(1) }}
+            </option>
+          </select>
+        </div>
+
+        <div class="setting-section">
+          <div class="checkbox-container">
+            <input type="checkbox" id="dyslexiaToggle" :checked="settingsStore.dyslexiaMode"
+              @change="toggleDyslexiaFont" />
+            <label for="dyslexiaToggle">Enable Dyslexia-Friendly Font</label>
+          </div>
+
+
+          <p class="modal-credit">
+            Designed in 2025 by Achu Mukundan, Mehdi Essoussi, Justin Chang and Son Phatpanichot at The University of
+            Toronto.
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </template>
 </template>
 
 <script setup lang="ts">
@@ -164,6 +196,7 @@ import { useSettingsStore } from '@/stores/settings'
 
 const chargesStore = useChargesStore();
 const velocityInputError = ref('');
+const isSettingsModalOpen = ref(false);
 
 const toggleDyslexiaFont = () => {
   settingsStore.setDyslexiaMode(!settingsStore.dyslexiaMode);
@@ -224,7 +257,7 @@ watch(selectedChargeExists, (newVal) => {
   if (newVal) {
     const selectedCharge = chargesStore.charges.find(c => c.id === chargesStore.selectedChargeId);
     if (selectedCharge) {
-      chargeValue.value = selectedCharge.magnitude.toString(); 
+      chargeValue.value = selectedCharge.magnitude.toString();
       polarity.value = selectedCharge.polarity;
       velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
       velocityDirectionX.value = selectedCharge.velocity.direction.x.toString();
@@ -399,12 +432,21 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
   overflow-x: hidden;
 }
 
+.header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
 .logo {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 30px;
+  font-size: 28px;
+  /* larger size */
+  font-weight: 800;
   color: #2c3e50;
 }
+
 
 .charge-form {
   display: flex;
@@ -457,7 +499,8 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
 
 /* Highlight active buttons */
 .action-button.active {
-  background-color: #27ae60; /* Green for active state */
+  background-color: #27ae60;
+  /* Green for active state */
   color: white;
 }
 
@@ -468,15 +511,18 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
 
 /* Specific styles for Start, Stop, and Reset buttons */
 .start-button.active {
-  background-color: #2ecc71; /* Bright green when animation is started */
+  background-color: #2ecc71;
+  /* Bright green when animation is started */
 }
 
 .stop-button.active {
-  background-color: #e74c3c; /* Red when animation is stopped */
+  background-color: #e74c3c;
+  /* Red when animation is stopped */
 }
 
 .reset-button.active {
-  background-color: #f39c12; /* Orange when animation is reset */
+  background-color: #f39c12;
+  /* Orange when animation is reset */
 }
 
 .add-button {
@@ -639,5 +685,90 @@ body.deuteranopia .controls-container {
 /* Tritanopia friendly mode */
 body.tritanopia .controls-container {
   background-color: #c0c0c0;
+}
+
+.settings-wrapper {
+  margin-bottom: 20px;
+}
+
+.outlined-icon-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.outlined-icon-button:hover {
+  background: #f0f0f0;
+  border-color: #aaa;
+}
+
+.outlined-icon-button svg {
+  stroke: #2c3e50;
+}
+
+.settings-label {
+  font-size: 0.95em;
+}
+
+.settings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.settings-modal {
+  background: white;
+  width: 90%;
+  max-width: 320px;
+  padding: 20px;
+  border-radius: 10px;
+  position: relative;
+}
+
+.close-modal {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #666;
+}
+
+.setting-section {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-section label {
+  font-weight: 500;
+}
+
+.modal-credit {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: #888;
+  text-align: center;
 }
 </style>
