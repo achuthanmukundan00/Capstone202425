@@ -39,33 +39,33 @@
           <button class="action-button reset-button" @click="resetAnimation">Reset Animation</button>
         </div>
         <div class="form-group">
-    <label>Velocity:</label>
-    <div class="velocity-inputs">
-      <div class="velocity-input">
-        <label>Magnitude:</label>
-        <input type="number" v-model="velocityMagnitude" min="0" step="0.1" class="input-field"
-               placeholder="Speed" @focus="checkChargeSelected" />
-      </div>
-    </div>
-    <div class="velocity-direction">
-      <label>Direction:</label>
-      <div class="direction-inputs">
-        <div class="direction-input">
-          <label>X:</label>
-          <input type="number" v-model="velocityDirectionX" step="0.1" min="-1" max="1" class="input-field"
-                 placeholder="-1 to 1" @focus="checkChargeSelected" />
+          <label>Velocity:</label>
+          <div class="velocity-inputs">
+            <div class="velocity-input">
+              <label>Magnitude:</label>
+              <input type="number" v-model="velocityMagnitude" min="0" step="0.1" class="input-field"
+                placeholder="Speed" @focus="checkChargeSelected" />
+            </div>
+          </div>
+          <div class="velocity-direction">
+            <label>Direction:</label>
+            <div class="direction-inputs">
+              <div class="direction-input">
+                <label>X:</label>
+                <input type="number" v-model="velocityDirectionX" step="0.1" min="-1" max="1" class="input-field"
+                  placeholder="-1 to 1" @focus="checkChargeSelected" />
+              </div>
+              <div class="direction-input">
+                <label>Y:</label>
+                <input type="number" v-model="velocityDirectionY" step="0.1" min="-1" max="1" class="input-field"
+                  placeholder="-1 to 1" @focus="checkChargeSelected" />
+              </div>
+            </div>
+          </div>
+          <div v-if="velocityInputError" class="error-message">
+            {{ velocityInputError }}
+          </div>
         </div>
-        <div class="direction-input">
-          <label>Y:</label>
-          <input type="number" v-model="velocityDirectionY" step="0.1" min="-1" max="1" class="input-field"
-                 placeholder="-1 to 1" @focus="checkChargeSelected" />
-        </div>
-      </div>
-    </div>
-    <div v-if="velocityInputError" class="error-message">
-      {{ velocityInputError }}
-    </div>
-  </div>
 
         <div class="form-group">
           <label for="magField">Uniform Magnetic Field (T):</label>
@@ -114,8 +114,10 @@
         </button>
 
         <!-- Colorblind Button -->
-        <button class="action-button colorblind-toggle" @click="toggleColorblindMode">
-          Colorblind Mode: {{ selectedColorblindMode }}
+        <label>Colorblind mode</label>
+        <button v-for="mode in colorblindModes" :key="mode" :class="{ active: settingsStore.colorblindMode === mode }"
+          @click="settingsStore.setColorblindMode(mode)">
+          {{ mode }}
         </button>
       </div>
     </div>
@@ -127,6 +129,7 @@ import { ref, computed, watch } from 'vue';
 import { useChargesStore, type SimulationMode } from '@/stores/charges';
 import RangeSlider from './ui/RangeSlider.vue';
 import { CHARGE_MAGNITUDE_BOUNDS, MAGNETIC_FIELD_BOUNDS, VELOCITY_BOUNDS } from '@/consts';
+import { useSettingsStore } from '@/stores/settings'
 
 const chargesStore = useChargesStore();
 const velocityInputError = ref('');
@@ -322,20 +325,9 @@ const handleDeselect = () => {
 };
 
 // Add available colorblind modes (you can add more as needed)
-const colorblindModes = ref(["default", "protanopia", "deuteranopia", "tritanopia"]);
-const selectedColorblindMode = ref("default");
-
+const settingsStore = useSettingsStore()
+const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] as const;
 // Toggle function cycles through the modes
-const toggleColorblindMode = () => {
-  const currentIndex = colorblindModes.value.indexOf(selectedColorblindMode.value);
-  const nextIndex = (currentIndex + 1) % colorblindModes.value.length;
-  selectedColorblindMode.value = colorblindModes.value[nextIndex];
-
-  // Update the document body (or a wrapper element) with the new mode's class.
-  // This will allow CSS rules to apply different color schemes.
-  document.body.classList.remove(...colorblindModes.value);
-  document.body.classList.add(selectedColorblindMode.value);
-};
 </script>
 
 <style scoped>
@@ -552,12 +544,6 @@ const toggleColorblindMode = () => {
   color: #333;
 }
 
-/* Default styling (already in your styles) */
-.controls-container {
-  background-color: #f5f5f5;
-  /* ... other properties ... */
-}
-
 /* Protanopia friendly mode */
 body.protanopia .controls-container {
   background-color: #e0e0e0;
@@ -573,5 +559,4 @@ body.deuteranopia .controls-container {
 body.tritanopia .controls-container {
   background-color: #c0c0c0;
 }
-
 </style>

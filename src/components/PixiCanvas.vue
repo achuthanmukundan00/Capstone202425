@@ -1,10 +1,10 @@
 <template>
-    <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container">
-      <div class="field-readout">{{ fieldReadout }}</div>
-    </div>
+  <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container">
+    <div class="field-readout">{{ fieldReadout }}</div>
+  </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { useChargesStore } from '@/stores/charges';
@@ -12,6 +12,14 @@ import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, d
 import { calculateMagneticForce } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
 import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
+import { useSettingsStore } from '@/stores/settings'
+import { ColorPalettes } from '@/utils/colorPalettes'
+
+const settingsStore = useSettingsStore()
+// Compute the palette based on the mode
+const palette = computed(() => {
+  return ColorPalettes[settingsStore.colorblindMode]
+})
 
 const fieldReadout = ref('');
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -152,18 +160,38 @@ onMounted(async () => {
     }
   });
 
+  // Watch for changes in colorblind mode.
+  watch(
+    () => settingsStore.colorblindMode,
+    (newMode) => {
+      console.log('Colorblind mode changed to:', newMode);
+      console.log(palette.value);
+
+      if (chargesStore.mode === 'electric') {
+        removeFields(app!);
+        drawElectricField(app!, chargesStore.charges, palette.value);
+      } else {
+        removeFields(app!);
+        drawMagneticField(app!, chargesStore.magneticField);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
+      }
+      updateChargesOnCanvas(chargesStore.charges);
+    }
+  );
+
   // Watch for changes in the charges array
   watch(
     () => chargesStore.charges,
     (newCharges) => {
       if (chargesStore.mode === 'electric') {
         removeFields(app!);
-        drawElectricField(app!, newCharges);
+        drawElectricField(app!, newCharges, palette);
       } else {
         removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField);
-        drawMagneticForcesOnAllCharges(app!, chargesStore);
-        drawVelocityOnAllCharges(app!, chargesStore);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
       }
       updateChargesOnCanvas(newCharges);
     },
@@ -181,12 +209,12 @@ onMounted(async () => {
 
       if (newMode === 'electric') {
         removeFields(app!);
-        drawElectricField(app, chargesStore.charges);
+        drawElectricField(app, chargesStore.charges, palette.value);
       } else {
         removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField);
-        drawMagneticForcesOnAllCharges(app!, chargesStore);
-        drawVelocityOnAllCharges(app!, chargesStore);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
       }
     }
   );
@@ -197,13 +225,12 @@ onMounted(async () => {
       if (chargesStore.mode === 'magnetic') {
         removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField)
-        drawMagneticForcesOnAllCharges(app!, chargesStore);
-        drawVelocityOnAllCharges(app!, chargesStore);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
       }
     },
     { deep: true, immediate: true }
   );
-
   // Add keyboard event listener
   window.addEventListener('keydown', handleKeyDown);
 
@@ -229,12 +256,12 @@ const resize = () => {
     app.renderer.resize(window.innerWidth, window.innerHeight);
     if (chargesStore.mode === 'electric') {
       removeFields(app!);
-      drawElectricField(app, chargesStore.charges);
+      drawElectricField(app, chargesStore.charges, palette.value);
     } else {
       removeFields(app!);
       drawMagneticField(app!, chargesStore.magneticField)
-      drawMagneticForcesOnAllCharges(app!, chargesStore);
-      drawVelocityOnAllCharges(app!, chargesStore);
+      drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+      drawVelocityOnAllCharges(app!, chargesStore, palette.value);
     }
     updateChargesOnCanvas(chargesStore.charges);
   }
@@ -288,7 +315,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       graphic.clear();
     }
 
-    const color = charge.polarity === 'positive' ? 0xD55E00 : 0x0072B2;
+    const color = charge.polarity === 'positive' ? palette.value.chargePositive : palette.value.chargeNegative;
     const polarity = charge.polarity === 'positive' ? "+" : "-";
 
     // Draw the charge circle
