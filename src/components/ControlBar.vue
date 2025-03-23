@@ -156,7 +156,7 @@
     <div class="settings-modal-overlay" @click.self="isSettingsModalOpen = false">
       <div class="settings-modal">
         <button class="close-modal" @click="isSettingsModalOpen = false">×</button>
-        <h2>Accessibility Settings</h2>
+        <h2>Settings</h2>
 
         <div class="setting-section">
           <label for="colorblind-mode">Colorblind Mode:</label>
