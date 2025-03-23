@@ -35,8 +35,8 @@
           :step="VELOCITY_BOUNDS.STEP" label="Velocity" unit="m/s" :precision="0" />
 
         <div class="button-group">
-          <button 
-            class="action-button start-button" 
+          <button
+            class="action-button start-button"
             :class="{ active: animationMode === AnimationMode.start }"
             @click="startAnimation"
             :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)"
@@ -44,8 +44,8 @@
             Start Animation
           </button>
 
-          <button 
-            class="action-button stop-button" 
+          <button
+            class="action-button stop-button"
             :class="{ active: animationMode === AnimationMode.stop }"
             @click="stopAnimation"
             :disabled="animationMode !== AnimationMode.start"
@@ -53,8 +53,8 @@
             Stop Animation
           </button>
 
-          <button 
-            class="action-button reset-button" 
+          <button
+            class="action-button reset-button"
             :class="{ active: animationMode === AnimationMode.reset }"
             @click="resetAnimation"
             :disabled="animationMode !== AnimationMode.stop"
@@ -281,7 +281,7 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
     }
   });
 
-  console.log(`🚀 Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+  console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
 });
 
 // Function to Toggle Magnetic Field Direction

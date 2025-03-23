@@ -119,9 +119,9 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
   const minDistance = 25; // Minimum distance traveled before taking a sample
 
   // Calculate distance from last sampled position
-  if (charge.trail.length === 0 || 
+  if (charge.trail.length === 0 ||
     Math.hypot(
-      charge.position.x - charge.trail[charge.trail.length - 1].x, 
+      charge.position.x - charge.trail[charge.trail.length - 1].x,
       charge.position.y - charge.trail[charge.trail.length - 1].y
     ) >= minDistance) {
 
@@ -177,7 +177,6 @@ const updateChargeMotion = () => {
 
     updateChargeTrail(charge, trailGraphics);
   });
-  animationFrameId = requestAnimationFrame(updateChargeMotion);
   }
 };
 
@@ -242,7 +241,6 @@ onMounted(async () => {
     () => settingsStore.colorblindMode,
     (newMode) => {
       console.log('Colorblind mode changed to:', newMode);
-      console.log(palette.value);
 
       if (chargesStore.mode === 'electric') {
         removeFields(app!);
