@@ -119,6 +119,13 @@
           @click="settingsStore.setColorblindMode(mode)">
           {{ mode }}
         </button>
+
+        <!-- Dyslexia Toggle -->
+        <label>Dyslexia-friendly font</label>
+        <button @click="toggleDyslexiaFont" :class="{ active: settingsStore.dyslexiaMode }">
+          {{ settingsStore.dyslexiaMode ? 'On' : 'Off' }}
+        </button>
+
       </div>
     </div>
   </div>
@@ -133,6 +140,10 @@ import { useSettingsStore } from '@/stores/settings'
 
 const chargesStore = useChargesStore();
 const velocityInputError = ref('');
+
+const toggleDyslexiaFont = () => {
+  settingsStore.setDyslexiaMode(!settingsStore.dyslexiaMode);
+};
 
 const startAnimation = () => {
   chargesStore.startAnimation();
