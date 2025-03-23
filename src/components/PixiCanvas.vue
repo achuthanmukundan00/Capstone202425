@@ -7,7 +7,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
-import { useChargesStore } from '@/stores/charges';
+import { AnimationMode, useChargesStore } from '@/stores/charges';
 import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges, removeFields } from '@/utils/drawingUtils';
 import { calculateMagneticForce } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
@@ -151,12 +151,15 @@ const clearTrails = () => {
 };
 
 const updateChargeMotion = () => {
-  if (!chargesStore.isAnimating) {
+  if (chargesStore.animationMode == AnimationMode.reset) {
     clearTrails();
     return;
   }
-
-  chargesStore.charges.forEach(charge => {
+  else if (chargesStore.animationMode == AnimationMode.stop) {
+    return;
+  }
+  else {
+    chargesStore.charges.forEach(charge => {
     const force = calculateMagneticForce(charge, chargesStore.magneticField);
     charge.velocity.direction.x += force.x * FORCE_SCALING;
     charge.velocity.direction.y += force.y * FORCE_SCALING;
@@ -175,6 +178,7 @@ const updateChargeMotion = () => {
     updateChargeTrail(charge, trailGraphics);
   });
   animationFrameId = requestAnimationFrame(updateChargeMotion);
+  }
 };
 
 onMounted(async () => {

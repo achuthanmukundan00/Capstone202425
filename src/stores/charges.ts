@@ -23,6 +23,7 @@ export interface Charge {
 
 // Add mode type
 export type SimulationMode = 'electric' | 'magnetic';
+export enum AnimationMode {start, stop, reset}
 
 // Create a Pinia store for managing charges
 export const useChargesStore = defineStore('charges', {
@@ -34,7 +35,7 @@ export const useChargesStore = defineStore('charges', {
 
     // Uniform magnetic field state (in Teslas, e.g. { x: 0, y: 0, z: 1 })
     magneticField: { x: 0, y: 0, z: 0 },
-    isAnimating: false,
+    animationMode: AnimationMode.stop,
   }),
 
   // Actions that can be performed on the store
@@ -101,8 +102,8 @@ export const useChargesStore = defineStore('charges', {
 
     startAnimation() {
       this.charges.forEach(charge => {
-        charge.preAnimationPosition = { x: charge.position.x, y: charge.position.y };
-        charge.preAnimationVelocity = { 
+        charge.preAnimationPosition = charge.preAnimationPosition ?? { x: charge.position.x, y: charge.position.y };
+        charge.preAnimationVelocity = charge.preAnimationVelocity ?? { 
           magnitude: charge.velocity.magnitude, 
           direction: { 
             x: charge.velocity.direction.x, 
@@ -110,11 +111,15 @@ export const useChargesStore = defineStore('charges', {
           }
         };
       });
-      this.isAnimating = true;
+      this.animationMode = AnimationMode.start;
+    },
+
+    stopAnimation() {
+      this.animationMode = AnimationMode.stop;
     },
 
     resetAnimation() {
-      this.isAnimating = false;
+      this.animationMode = AnimationMode.reset;
       this.charges.forEach(charge => {
         charge.position = { x: charge.preAnimationPosition?.x ?? 300, y: charge.preAnimationPosition?.y ?? 400 };
         charge.velocity = { magnitude: charge.preAnimationVelocity?.magnitude ?? 0, direction: charge.preAnimationVelocity?.direction ?? { x: 0, y: 0}};

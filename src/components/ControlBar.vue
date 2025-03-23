@@ -35,8 +35,32 @@
           :step="VELOCITY_BOUNDS.STEP" label="Velocity" unit="m/s" :precision="0" />
 
         <div class="button-group">
-          <button class="action-button start-button" @click="startAnimation">Start Animation</button>
-          <button class="action-button reset-button" @click="resetAnimation">Reset Animation</button>
+          <button 
+            class="action-button start-button" 
+            :class="{ active: animationMode === AnimationMode.start }"
+            @click="startAnimation"
+            :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)"
+          >
+            Start Animation
+          </button>
+
+          <button 
+            class="action-button stop-button" 
+            :class="{ active: animationMode === AnimationMode.stop }"
+            @click="stopAnimation"
+            :disabled="animationMode !== AnimationMode.start"
+          >
+            Stop Animation
+          </button>
+
+          <button 
+            class="action-button reset-button" 
+            :class="{ active: animationMode === AnimationMode.reset }"
+            @click="resetAnimation"
+            :disabled="animationMode !== AnimationMode.stop"
+          >
+            Reset Animation
+          </button>
         </div>
         <div class="form-group">
           <label>Velocity:</label>
@@ -133,7 +157,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useChargesStore, type SimulationMode } from '@/stores/charges';
+import { AnimationMode, useChargesStore, type SimulationMode } from '@/stores/charges';
 import RangeSlider from './ui/RangeSlider.vue';
 import { CHARGE_MAGNITUDE_BOUNDS, MAGNETIC_FIELD_BOUNDS, VELOCITY_BOUNDS } from '@/consts';
 import { useSettingsStore } from '@/stores/settings'
@@ -146,11 +170,24 @@ const toggleDyslexiaFont = () => {
 };
 
 const startAnimation = () => {
-  chargesStore.startAnimation();
+  if (animationMode.value === AnimationMode.stop || animationMode.value === AnimationMode.reset) {
+    chargesStore.startAnimation();
+    animationMode.value = AnimationMode.start;
+  }
+};
+
+const stopAnimation = () => {
+  if (animationMode.value === AnimationMode.start) {
+    chargesStore.stopAnimation();
+    animationMode.value = AnimationMode.stop;
+  }
 };
 
 const resetAnimation = () => {
-  chargesStore.resetAnimation();
+  if (animationMode.value === AnimationMode.stop) {
+    chargesStore.resetAnimation();
+    animationMode.value = AnimationMode.reset;
+  }
 };
 
 const checkChargeSelected = (event: FocusEvent) => {
@@ -168,6 +205,8 @@ const polarity = ref<'positive' | 'negative'>('positive');
 const velocityMagnitude = ref('0');
 const velocityDirectionX = ref('0');
 const velocityDirectionY = ref('0');
+const animationMode = ref<AnimationMode>(AnimationMode.stop);
+
 
 // Add computed for current mode
 const mode = computed(() => chargesStore.mode);
@@ -407,6 +446,30 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
   color: #7f8c8d;
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Highlight active buttons */
+.action-button.active {
+  background-color: #27ae60; /* Green for active state */
+  color: white;
+}
+
+/* Prevent hover effect on disabled buttons */
+.action-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Specific styles for Start, Stop, and Reset buttons */
+.start-button.active {
+  background-color: #2ecc71; /* Bright green when animation is started */
+}
+
+.stop-button.active {
+  background-color: #e74c3c; /* Red when animation is stopped */
+}
+
+.reset-button.active {
+  background-color: #f39c12; /* Orange when animation is reset */
 }
 
 .add-button {
