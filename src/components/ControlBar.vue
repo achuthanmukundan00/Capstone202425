@@ -168,20 +168,31 @@
           </select>
         </div>
 
-        <div class="setting-section">
-          <div class="checkbox-container">
-            <input type="checkbox" id="dyslexiaToggle" :checked="settingsStore.dyslexiaMode"
-              @change="toggleDyslexiaFont" />
-            <label for="dyslexiaToggle">Enable Dyslexia-Friendly Font</label>
+        <div class="setting-section toggles">
+          <div class="toggle-row">
+            <span>Dyslexia-Friendly Font</span>
+
+            <label class="toggle-switch">
+              <input class="switch-input" type="checkbox" :checked="settingsStore.dyslexiaMode" @change="toggleDyslexiaFont" />
+              <span class="switch-slider"></span>
+            </label>
           </div>
 
+          <div class="toggle-row">
+            <span>Dark Mode</span>
+            <label class="toggle-switch">
+              <input class="switch-input" type="checkbox" :checked="isDarkMode" @change="toggleDarkMode" />
+              <span class="switch-slider"></span>
+            </label>
 
-          <p class="modal-credit">
-            Designed in 2025 by Achu Mukundan, Mehdi Essoussi, Justin Chang and Son Phatpanichot at The University of
-            Toronto.
-          </p>
+          </div>
 
         </div>
+
+        <p class="modal-credit">
+          Designed in 2025 by Achu Mukundan, Mehdi Essoussi, Justin Chang and Son Phatpanichot at The University of
+          Toronto.
+        </p>
       </div>
     </div>
   </template>
@@ -197,6 +208,12 @@ import { useSettingsStore } from '@/stores/settings'
 const chargesStore = useChargesStore();
 const velocityInputError = ref('');
 const isSettingsModalOpen = ref(false);
+const isDarkMode = ref(false); // or pull this from your settings store if global
+
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value;
+  document.body.classList.toggle('dark-mode', isDarkMode.value);
+};
 
 const toggleDyslexiaFont = () => {
   settingsStore.setDyslexiaMode(!settingsStore.dyslexiaMode);
@@ -446,7 +463,6 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
   font-weight: 800;
   color: #2c3e50;
 }
-
 
 .charge-form {
   display: flex;
@@ -770,5 +786,142 @@ body.tritanopia .controls-container {
   font-style: italic;
   color: #888;
   text-align: center;
+}
+
+.setting-section.toggles {
+  gap: 16px;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+}
+
+.switch-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 22px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: background-color 0.2s;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.switch-input:checked + .switch-slider {
+  background-color: #4CAF50;
+}
+
+.switch-input:checked + .switch-slider::before {
+  transform: translateX(18px);
+}
+
+
+/* ========================== */
+/* DARK MODE IMPROVEMENTS     */
+/* ========================== */
+
+body.dark-mode .controls-container {
+  background-color: #1f1f1f;
+  color: #f5f5f5;
+}
+
+body.dark-mode .logo {
+  color: #f5f5f5;
+}
+
+body.dark-mode .outlined-icon-button {
+  background-color: #2b2b2b;
+  border: 1px solid #555;
+  color: #f5f5f5;
+}
+
+body.dark-mode .outlined-icon-button:hover {
+  background-color: #3a3a3a;
+  border-color: #777;
+}
+
+body.dark-mode .outlined-icon-button svg {
+  stroke: #f5f5f5;
+}
+
+body.dark-mode .mode-button {
+  background-color: #2b2b2b;
+  color: #ccc;
+  border-color: #444;
+}
+
+body.dark-mode .mode-button.active {
+  background-color: #3498db;
+  color: white;
+  border-color: #2980b9;
+}
+
+body.dark-mode .input-field {
+  background-color: #2c2c2c;
+  color: #f5f5f5;
+  border: 1px solid #555;
+}
+
+body.dark-mode .selection-controls {
+  background: #2c2c2c;
+  color: #ccc;
+}
+
+body.dark-mode .action-button {
+  background-color: #2b2b2b;
+  color: #f5f5f5;
+  border: 1px solid #555;
+}
+
+body.dark-mode .action-button.active {
+  background-color: #27ae60;
+  color: white;
+}
+
+body.dark-mode .action-button:hover:not(:disabled) {
+  background-color: #349e68;
+}
+
+body.dark-mode .edit-button {
+  background-color: #2980b9;
+}
+
+body.dark-mode .edit-button:hover:not(:disabled) {
+  background-color: #2471a3;
+}
+
+body.dark-mode .delete-button {
+  background-color: #c0392b;
+}
+
+body.dark-mode .delete-button:hover:not(:disabled) {
+  background-color: #a93226;
 }
 </style>
