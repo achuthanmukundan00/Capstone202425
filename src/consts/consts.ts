@@ -9,8 +9,8 @@ export const MAX_VECTOR_LENGTH = 40; // Maximum length for the vectors (to preve
 export const MAG_FORCE_ARROW_FACTOR = 250000; // Scaling factor for drawing magnetic force arrows
 
 // Animation
-export const ANIMATION_SPEED = 8e-2;
-export const FORCE_SCALING = 4e-5;
+export const ANIMATION_SPEED = 8e-1;
+export const FORCE_SCALING = 2e-4;
 
 // UI Bounds
 export const CHARGE_MAGNITUDE_BOUNDS = {
