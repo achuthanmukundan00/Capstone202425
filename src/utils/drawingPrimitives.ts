@@ -19,8 +19,6 @@ export function createElectricFieldArrow(options: {
     color = 0xffffff,
     headSize = 8,
     label,
-    labelStyle,
-    resolution = window.devicePixelRatio || 2,
     renderer,
   } = options;
 
@@ -70,20 +68,37 @@ export function createElectricFieldArrow(options: {
   arrowGraphics.endFill();
   container.addChild(arrowGraphics);
 
-  // Optional label
-  if (label) {
-    const text = new PIXI.Text(label, {
-      fontFamily: 'Poppins',
-      fontSize: 12,
-      fill: color,
-      align: 'center',
-      ...labelStyle,
-    });
-    text.anchor.set(0.5);
-    text.position.set(length / 2, -14);
-    text.resolution = resolution;
-    container.addChild(text);
+  return container;
+}
+
+export function createMagneticFieldSymbol(
+  direction: 'in' | 'out',
+  options: {
+    size?: number,
+    color?: number,
+    alpha?: number
+  }
+): PIXI.Graphics {
+  const { size = 8, color = 0xffffff, alpha = 1 } = options;
+  const symbol = new PIXI.Graphics();
+  symbol.name = 'magneticFieldSymbol';
+  symbol.zIndex = 0;
+  symbol.alpha = alpha;
+
+  if (direction === 'out') {
+    // ⭕ Out of the page — dot
+    symbol.beginFill(color, alpha);
+    symbol.drawCircle(0, 0, size / 2);
+    symbol.endFill();
+  } else {
+    // ❌ Into the page — X
+    symbol.lineStyle(2, color, alpha);
+    symbol.moveTo(-size, -size);
+    symbol.lineTo(size, size);
+    symbol.moveTo(-size, size);
+    symbol.lineTo(size, -size);
+    symbol.endFill();
   }
 
-  return container;
+  return symbol;
 }

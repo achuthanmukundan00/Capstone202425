@@ -13,7 +13,7 @@ import {
   ARROWHEAD_LENGTH,
   MAG_FORCE_ARROW_FACTOR,
 } from '../consts'
-import { createElectricFieldArrow } from '@/utils/drawingPrimitives'
+import { createElectricFieldArrow, createMagneticFieldSymbol } from '@/utils/drawingPrimitives'
 
 const MIN_ALPHA = 0.15
 const MAX_ALPHA = 1.0
@@ -184,36 +184,36 @@ export function drawMagneticField(
   app: PIXI.Application,
   magneticField: { x: number; y: number; z: number },
 ) {
-  if (!app) return
+  if (!app) return;
+
   app.stage.children
     .filter(child => child.name === 'magneticFieldSymbol')
-    .forEach(child => app.stage.removeChild(child))
+    .forEach(child => app.stage.removeChild(child));
 
-  const fieldStrength = Math.abs(magneticField.z)
-  if (fieldStrength === 0) return
+  const fieldStrength = Math.abs(magneticField.z);
+  if (fieldStrength === 0) return;
 
-  const fieldDirection = magneticField.z >= 0 ? 'out' : 'in'
-  const baseGridSize = FIELD_SPACING
-  const gridSpacing = Math.max(10, baseGridSize - fieldStrength * 5)
+  const direction = magneticField.z >= 0 ? 'out' : 'in';
+  const baseGridSize = FIELD_SPACING;
+  const gridSpacing = Math.max(10, baseGridSize - fieldStrength * 5);
 
   for (let x = gridSpacing / 2; x < app.screen.width; x += gridSpacing) {
     for (let y = gridSpacing / 2; y < app.screen.height; y += gridSpacing) {
-      const symbol = new PIXI.Text(fieldDirection === 'out' ? '×' : '•', {
-        fontFamily: 'Arial',
-        fontSize: Math.max(10, 20 - fieldStrength),
-        fill: '#ffffff',
-        align: 'center',
-      })
-      symbol.name = 'magneticFieldSymbol'
-      // Lower zIndex so symbols are drawn behind charges
-      symbol.zIndex = 0
-      symbol.x = x
-      symbol.y = y
-      symbol.anchor.set(0.5)
-      app.stage.addChild(symbol)
+      const symbol = createMagneticFieldSymbol(direction, {
+        size: 6,
+        color: 0xffffff,
+        alpha: 0.7,
+      });
+
+      symbol.name = 'magneticFieldSymbol';
+      symbol.zIndex = 0;
+      symbol.position.set(x, y);
+
+      app.stage.addChild(symbol);
     }
   }
 }
+
 
 export function drawMagneticForcesOnAllCharges(
   app: PIXI.Application,
@@ -249,8 +249,7 @@ export function drawVelocity(
       (charge.velocity.direction.y / charge.velocity.magnitude) *
       VECTOR_LENGTH_SCALE,
   }
-  const length =
-    Math.min(
+  const length = 0.5 * Math.min(
       Math.sqrt(scaledVelocity.x ** 2 + scaledVelocity.y ** 2),
       MAX_VECTOR_LENGTH,
     ) / VECTOR_LENGTH_SCALE

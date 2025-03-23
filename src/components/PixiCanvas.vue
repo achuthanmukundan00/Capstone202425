@@ -32,15 +32,25 @@ let app: PIXI.Application | null = null;
 const MOVEMENT_STEP = 10; // pixels per keypress
 
 function handleMouseMove(event: MouseEvent) {
-  const rect = canvasContainer.value?.getBoundingClientRect()
-  if (!rect) return
+  const rect = canvasContainer.value?.getBoundingClientRect();
+  if (!rect) return;
 
-  const x = event.clientX - rect.left
-  const y = event.clientY - rect.top
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
 
-  const field = getNetElectricFieldAtPoint({ x, y })
+  if (chargesStore.mode === 'electric') {
+    const field = getNetElectricFieldAtPoint({ x, y });
+    fieldReadout.value = `Ex: ${(field.x / 1e3).toFixed(2)} kN/C, Ey: ${(-field.y / 1e3).toFixed(2)} kN/C`;
+  } else if (chargesStore.mode === 'magnetic') {
+    const selected = chargesStore.charges.find(c => c.id === chargesStore.selectedChargeId);
+    if (!selected) {
+      fieldReadout.value = `Fx: -- N, Fy: -- N`;
+      return;
+    }
 
-  fieldReadout.value = `Ex: ${(field.x / 1e3).toFixed(2)} kN/C, Ey: ${(-1 * field.y / 1e3).toFixed(2)} kN/C`
+    const force = calculateMagneticForce(selected, chargesStore.magneticField);
+    fieldReadout.value = `Fx: ${force.x.toFixed(2)} N, Fy: ${force.y.toFixed(2)} N`;
+  }
 }
 
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -111,12 +121,9 @@ const updateChargeMotion = () => {
 onMounted(async () => {
   // Initialize PixiJS Application
   app = new PIXI.Application({
-    resolution: window.devicePixelRatio || 1,
+    resolution: 2,
     autoDensity: true,
     antialias: true,
-    backgroundAlpha: 0,
-    width: window.innerWidth,
-    height: window.innerHeight
   });
   await app.init({
     width: window.innerWidth,
@@ -333,9 +340,10 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     const polarity = charge.polarity === 'positive' ? "+" : "-";
 
     // Draw the charge circle
+    const radius = 24
     graphic.beginFill(color);
-    graphic.lineStyle(0);
-    graphic.drawCircle(0, 0, 20);
+    // graphic.lineStyle(0);
+    graphic.drawCircle(0, 0, radius);
     graphic.endFill();
 
     // Set position
@@ -344,12 +352,16 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     // Create or update the text label for the charge magnitude
     let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
     if (!text) {
-      text = new PIXI.Text(polarity + charge.magnitude.toString() + 'C', {
+      const labelText = `${polarity}${charge.magnitude}C`;
+      text = new PIXI.Text(labelText, {
         fontFamily: settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins',
-        fontSize: 14,
-        fill: 0xffffff,
-        align: 'center'
+        fontSize: 16,
+        fill: palette.value.chargeText,
+        align: 'center',
       });
+      text.name = 'chargeLabel';
+      text.anchor.set(0.5);
+      text.position.set(0, 0);
       text.name = 'chargeLabel';
       graphic.addChild(text);
     } else {
