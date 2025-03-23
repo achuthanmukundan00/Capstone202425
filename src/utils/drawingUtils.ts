@@ -13,6 +13,7 @@ import {
   ARROWHEAD_LENGTH,
   MAG_FORCE_ARROW_FACTOR,
 } from '../consts'
+import { createElectricFieldArrow, createMagneticFieldSymbol } from '@/utils/drawingPrimitives'
 
 const MIN_ALPHA = 0.15
 const MAX_ALPHA = 1.0
@@ -33,18 +34,28 @@ export function drawElectricField(
   //eslint-disable-next-line
   colorPalette: any,
 ) {
+  // Clear existing field arrows
   app.stage.children
     .filter(child => child.name === 'fieldVector')
     .forEach(child => app.stage.removeChild(child))
 
   if (charges.length === 0) return
 
+  // Increase clusterFactor to draw fewer arrows.
+  // For example, a factor of 2 draws one arrow per 2x2 block.
+  const clusterFactor = 2
+  const sampleSpacing = FIELD_SPACING * clusterFactor
+
+  const gridPoints = []
   let maxFieldMagnitude = 0
   let minFieldMagnitude = Infinity
 
-  for (let x = 0; x < app.screen.width; x += FIELD_SPACING) {
-    for (let y = 0; y < app.screen.height; y += FIELD_SPACING) {
+  // Single pass: compute the field vector at each sampled grid point
+  for (let x = 0; x < app.screen.width; x += sampleSpacing) {
+    for (let y = 0; y < app.screen.height; y += sampleSpacing) {
       const fieldVector = { x: 0, y: 0 }
+
+      // Sum contributions from all charges
       charges.forEach(charge => {
         const chargeField = calculateElectricField(
           charge.position,
@@ -57,70 +68,51 @@ export function drawElectricField(
       })
 
       const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2)
-      maxFieldMagnitude = Math.max(maxFieldMagnitude, magnitude)
       if (magnitude > 0) {
+        maxFieldMagnitude = Math.max(maxFieldMagnitude, magnitude)
         minFieldMagnitude = Math.min(minFieldMagnitude, magnitude)
       }
+      gridPoints.push({ x, y, fieldVector, magnitude })
     }
   }
 
-  for (let x = 0; x < app.screen.width; x += FIELD_SPACING) {
-    for (let y = 0; y < app.screen.height; y += FIELD_SPACING) {
-      const fieldVector = { x: 0, y: 0 }
-      charges.forEach(charge => {
-        const chargeField = calculateElectricField(
-          charge.position,
-          charge.magnitude,
-          { x, y },
-          charge.polarity === 'positive',
-        )
-        fieldVector.x += chargeField.x
-        fieldVector.y += chargeField.y
-      })
+  // Precompute logarithms for normalization (avoid log(0))
+  const logMin = Math.log(minFieldMagnitude || 1e-10)
+  const logMax = Math.log(maxFieldMagnitude)
 
-      const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2)
-      const logMin = Math.log(minFieldMagnitude || 1e-10)
-      const logMax = Math.log(maxFieldMagnitude)
-      const logCurrent = Math.log(magnitude || 1e-10)
-      const normalizedMagnitude = (logCurrent - logMin) / (logMax - logMin)
-      const alpha =
-        MIN_ALPHA +
-        (MAX_ALPHA - MIN_ALPHA) *
-          Math.pow(normalizedMagnitude, 1 / LOG_SCALE_FACTOR)
-      const length = Math.min(
-        magnitude * VECTOR_LENGTH_SCALE,
-        MAX_VECTOR_LENGTH,
-      )
-      const normalizedVector = {
-        x: (fieldVector.x / magnitude) * length,
-        y: (fieldVector.y / magnitude) * length,
-      }
+  // Draw arrows for the precomputed grid points
+  gridPoints.forEach(point => {
+    if (point.magnitude === 0) return
 
-      const arrow = new PIXI.Graphics()
-      arrow.name = 'fieldVector'
-      // Set arrow zIndex low so charges render above them
-      arrow.zIndex = 0
-      arrow.lineStyle(2, colorPalette.fieldVector, alpha)
-      arrow.moveTo(x, y)
-      const endX = x + normalizedVector.x
-      const endY = y + normalizedVector.y
-      arrow.lineTo(endX, endY)
-      const angle = Math.atan2(normalizedVector.y, normalizedVector.x)
-      arrow.lineTo(
-        endX - ARROWHEAD_LENGTH * Math.cos(angle - Math.PI / 6),
-        endY - ARROWHEAD_LENGTH * Math.sin(angle - Math.PI / 6),
-      )
-      arrow.moveTo(endX, endY)
-      arrow.lineTo(
-        endX - ARROWHEAD_LENGTH * Math.cos(angle + Math.PI / 6),
-        endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6),
-      )
-      arrow.beginFill(0xffffff, alpha)
-      arrow.endFill()
-      app.stage.addChild(arrow)
-    }
-  }
+    const logCurrent = Math.log(point.magnitude || 1e-10)
+    const normalizedMagnitude = (logCurrent - logMin) / (logMax - logMin)
+    const alpha =
+      MIN_ALPHA +
+      (MAX_ALPHA - MIN_ALPHA) *
+        Math.pow(normalizedMagnitude, 1 / LOG_SCALE_FACTOR)
+    const length = Math.min(
+      point.magnitude * VECTOR_LENGTH_SCALE,
+      MAX_VECTOR_LENGTH,
+    )
+
+    // Create the arrow for the electric field vector
+    const arrow = createElectricFieldArrow({
+      length,
+      thickness: 2,
+      color: colorPalette.fieldVector,
+      renderer: app.renderer,
+    })
+
+    arrow.name = 'fieldVector'
+    arrow.zIndex = 0
+    arrow.alpha = alpha
+    arrow.position.set(point.x, point.y)
+    arrow.rotation = Math.atan2(point.fieldVector.y, point.fieldVector.x)
+
+    app.stage.addChild(arrow)
+  })
 }
+
 export function drawMagneticForce(
   app: PIXI.Application,
   charge: Charge,
@@ -192,36 +184,36 @@ export function drawMagneticField(
   app: PIXI.Application,
   magneticField: { x: number; y: number; z: number },
 ) {
-  if (!app) return
+  if (!app) return;
+
   app.stage.children
     .filter(child => child.name === 'magneticFieldSymbol')
-    .forEach(child => app.stage.removeChild(child))
+    .forEach(child => app.stage.removeChild(child));
 
-  const fieldStrength = Math.abs(magneticField.z)
-  if (fieldStrength === 0) return
+  const fieldStrength = Math.abs(magneticField.z);
+  if (fieldStrength === 0) return;
 
-  const fieldDirection = magneticField.z >= 0 ? 'out' : 'in'
-  const baseGridSize = FIELD_SPACING
-  const gridSpacing = Math.max(10, baseGridSize - fieldStrength * 5)
+  const direction = magneticField.z >= 0 ? 'out' : 'in';
+  const baseGridSize = FIELD_SPACING;
+  const gridSpacing = Math.max(10, baseGridSize - fieldStrength * 5);
 
   for (let x = gridSpacing / 2; x < app.screen.width; x += gridSpacing) {
     for (let y = gridSpacing / 2; y < app.screen.height; y += gridSpacing) {
-      const symbol = new PIXI.Text(fieldDirection === 'out' ? '×' : '•', {
-        fontFamily: 'Arial',
-        fontSize: Math.max(10, 20 - fieldStrength),
-        fill: '#ffffff',
-        align: 'center',
-      })
-      symbol.name = 'magneticFieldSymbol'
-      // Lower zIndex so symbols are drawn behind charges
-      symbol.zIndex = 0
-      symbol.x = x
-      symbol.y = y
-      symbol.anchor.set(0.5)
-      app.stage.addChild(symbol)
+      const symbol = createMagneticFieldSymbol(direction, {
+        size: 6,
+        color: 0xffffff,
+        alpha: 0.7,
+      });
+
+      symbol.name = 'magneticFieldSymbol';
+      symbol.zIndex = 0;
+      symbol.position.set(x, y);
+
+      app.stage.addChild(symbol);
     }
   }
 }
+
 
 export function drawMagneticForcesOnAllCharges(
   app: PIXI.Application,
@@ -257,8 +249,7 @@ export function drawVelocity(
       (charge.velocity.direction.y / charge.velocity.magnitude) *
       VECTOR_LENGTH_SCALE,
   }
-  const length =
-    Math.min(
+  const length = 0.5 * Math.min(
       Math.sqrt(scaledVelocity.x ** 2 + scaledVelocity.y ** 2),
       MAX_VECTOR_LENGTH,
     ) / VECTOR_LENGTH_SCALE
