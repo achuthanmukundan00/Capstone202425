@@ -255,7 +255,7 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
       magnitude: magnitude,
       direction: {
         x: (dirX / length) * magnitude,
-        y: (dirY / length) * magnitude,
+        y: (-dirY / length) * magnitude, // Flip the y-direction
       }
     }
   });
