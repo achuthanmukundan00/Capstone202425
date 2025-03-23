@@ -544,12 +544,6 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
   color: #333;
 }
 
-/* Default styling (already in your styles) */
-.controls-container {
-  background-color: #f5f5f5;
-  /* ... other properties ... */
-}
-
 /* Protanopia friendly mode */
 body.protanopia .controls-container {
   background-color: #e0e0e0;
