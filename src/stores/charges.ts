@@ -25,6 +25,13 @@ export interface Charge {
 export type SimulationMode = 'electric' | 'magnetic';
 export enum AnimationMode {start, stop, reset}
 
+function generateRandomPosition() {
+  // Ensure charges appear fully inside the canvas
+  const x = Math.random() * 0.7 * (innerWidth - 2) + 24;
+  const y = Math.random() * (innerHeight - 2) + 24;
+  return { x, y };
+}
+
 // Create a Pinia store for managing charges
 export const useChargesStore = defineStore('charges', {
   // Initial state of the store
@@ -47,7 +54,7 @@ export const useChargesStore = defineStore('charges', {
         id: crypto.randomUUID(), // Generate unique ID for the charge
         magnitude: charge.magnitude,
         polarity: charge.polarity,
-        position: { x: 400, y: 300 }, // Place charge in the center of canvas initially
+        position: generateRandomPosition(),
         velocity: {
           magnitude: 0,
           direction: { x: 0, y: 0 }
@@ -103,11 +110,11 @@ export const useChargesStore = defineStore('charges', {
     startAnimation() {
       this.charges.forEach(charge => {
         charge.preAnimationPosition = charge.preAnimationPosition ?? { x: charge.position.x, y: charge.position.y };
-        charge.preAnimationVelocity = charge.preAnimationVelocity ?? { 
-          magnitude: charge.velocity.magnitude, 
-          direction: { 
-            x: charge.velocity.direction.x, 
-            y: charge.velocity.direction.y 
+        charge.preAnimationVelocity = charge.preAnimationVelocity ?? {
+          magnitude: charge.velocity.magnitude,
+          direction: {
+            x: charge.velocity.direction.x,
+            y: charge.velocity.direction.y
           }
         };
       });

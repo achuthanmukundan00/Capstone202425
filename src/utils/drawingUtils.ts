@@ -15,7 +15,7 @@ import {
 } from '../consts'
 import { createElectricFieldArrow, createMagneticFieldSymbol } from '@/utils/drawingPrimitives'
 
-const MIN_ALPHA = 0.15
+const MIN_ALPHA = 0.1
 const MAX_ALPHA = 1.0
 const LOG_SCALE_FACTOR = 2
 
