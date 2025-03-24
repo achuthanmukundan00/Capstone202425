@@ -19,6 +19,39 @@ const MIN_ALPHA = 0.1
 const MAX_ALPHA = 1.0
 const LOG_SCALE_FACTOR = 2
 
+// Object pool for force vectors to avoid creating/destroying graphics objects
+// This significantly improves performance when redrawing forces frequently
+const forceVectorPool: PIXI.Graphics[] = [];
+const MAX_POOL_SIZE = 100;
+
+// Get a vector from the pool or create a new one
+function getVectorFromPool(): PIXI.Graphics {
+  if (forceVectorPool.length > 0) {
+    const vector = forceVectorPool.pop()!;
+    vector.clear();
+    return vector;
+  }
+  return new PIXI.Graphics();
+}
+
+// Return a vector to the pool for reuse
+function returnVectorToPool(vector: PIXI.Graphics) {
+  if (forceVectorPool.length < MAX_POOL_SIZE) {
+    forceVectorPool.push(vector);
+  }
+}
+
+// Clear all vectors of a certain type and return them to the pool
+function clearAndPoolVectors(app: PIXI.Application, filter: (child: PIXI.Container) => boolean) {
+  const vectorsToRemove = app.stage.children.filter(filter);
+  vectorsToRemove.forEach(child => {
+    app.stage.removeChild(child);
+    if (child instanceof PIXI.Graphics) {
+      returnVectorToPool(child);
+    }
+  });
+}
+
 export function removeFields(app: PIXI.Application) {
   app.stage.children
     .filter(child => child.name === 'magneticFieldSymbol')
@@ -40,6 +73,8 @@ export function drawElectricField(
     .forEach(child => app.stage.removeChild(child))
 
   if (charges.length === 0) return
+  // const chargesStore = useChargesStore()
+  // if (!chargesStore.showForces) return
 
   // Increase clusterFactor to draw fewer arrows.
   // For example, a factor of 2 draws one arrow per 2x2 block.
@@ -111,6 +146,88 @@ export function drawElectricField(
 
     app.stage.addChild(arrow)
   })
+}
+
+export function drawElectricForce(app: PIXI.Application, force: { direction: { x: number; y: number }; magnitude: number }, position: { x: number; y: number }, isTotal: boolean = false, sourceChargeId?: string) {
+  // Use object pooling for better performance
+  const arrow = getVectorFromPool();
+  arrow.name = isTotal ? 'electricForceVector' : `electricForceVector-from-${sourceChargeId || 'unknown'}`;
+  arrow.zIndex = 5; // Higher than field vectors but lower than charges
+
+  // Use different colors and line styles for total vs partial forces
+  const color = isTotal ? 0xff0000 : 0x00aaff; // Red for total, Blue for partial
+  const lineWidth = isTotal ? 3 : 2; // Thicker line for total force
+
+  arrow.lineStyle(lineWidth, color, 1);
+
+  // Calculate the force vector endpoint
+  // Increase the scale factor to make forces more visible
+  const scaleFactor = 200; // Base scale factor
+
+  // Make arrow length proportional to force magnitude
+  // But use log scaling to handle wide range of magnitudes
+  const magnitude = Math.max(0.001, force.magnitude); // Avoid log(0)
+  const logScaledMagnitude = Math.log(magnitude * 1e10 + 1) / Math.log(10);
+  const arrowLength = Math.min(scaleFactor * logScaledMagnitude, 300); // Cap maximum length
+
+  const endX = position.x + force.direction.x * arrowLength;
+  const endY = position.y + force.direction.y * arrowLength;
+
+  // Draw the main line
+  arrow.moveTo(position.x, position.y);
+  arrow.lineTo(endX, endY);
+
+  // Draw arrowhead
+  const angle = Math.atan2(endY - position.y, endX - position.x);
+  const arrowheadSize = isTotal ? ARROWHEAD_LENGTH * 1.2 : ARROWHEAD_LENGTH;
+
+  // Create filled arrowhead
+  arrow.beginFill(color);
+  arrow.moveTo(endX, endY);
+  arrow.lineTo(
+    endX - arrowheadSize * Math.cos(angle - Math.PI / 6),
+    endY - arrowheadSize * Math.sin(angle - Math.PI / 6)
+  );
+  arrow.lineTo(
+    endX - arrowheadSize * Math.cos(angle + Math.PI / 6),
+    endY - arrowheadSize * Math.sin(angle + Math.PI / 6)
+  );
+  arrow.lineTo(endX, endY);
+  arrow.endFill();
+
+  app.stage.addChild(arrow);
+  return arrow;
+}
+
+export function drawElectricForceForCharge(app: PIXI.Application, charge: Charge) {
+  // Skip if no forces calculated
+  if (!charge.electricForce || !charge.electricForce.totalForce) return;
+
+  const totalForce = charge.electricForce.totalForce;
+
+  // Use a higher threshold to avoid drawing very small forces
+  // This improves performance by drawing fewer vectors
+  const MIN_FORCE_THRESHOLD = 0.00001; // Increased from 0.000001
+
+  // First draw partial forces if they exist - but only if they're significant enough
+  if (charge.electricForce.partialForces && charge.electricForce.partialForces.length > 0) {
+    // Sort partial forces by magnitude (largest first) to ensure the most significant ones are drawn
+    const significantForces = charge.electricForce.partialForces
+      .filter(pf => pf.magnitude > MIN_FORCE_THRESHOLD)
+      .sort((a, b) => b.magnitude - a.magnitude)
+      // Limit the number of partial forces to draw for performance
+      .slice(0, 5); // Only show top 5 most significant forces
+
+    significantForces.forEach((partialForce) => {
+      const sourceChargeId = partialForce.sourceChargeId || 'unknown';
+      drawElectricForce(app, partialForce, charge.position, false, sourceChargeId);
+    });
+  }
+
+  // Always draw the total force on top if it's significant
+  if (totalForce.magnitude > MIN_FORCE_THRESHOLD) {
+    drawElectricForce(app, totalForce, charge.position, true);
+  }
 }
 
 export function drawMagneticForce(
@@ -193,11 +310,20 @@ export function drawMagneticField(
   app: PIXI.Application,
   magneticField: { x: number; y: number; z: number },
 ) {
-  if (!app) return;
+  if (!app) return
 
-  app.stage.children
-    .filter(child => child.name === 'magneticFieldSymbol')
-    .forEach(child => app.stage.removeChild(child));
+  // Clean up all magnetic and electric field/force elements using pooling
+  clearAndPoolVectors(app, child =>
+    child.name === 'magneticFieldSymbol' ||
+    child.name === 'fieldVector' ||
+    child.name === 'electricForceVector' ||
+    child.name?.startsWith('electricForceVector-from-')
+  );
+  
+// to check back here. Conflict resolution. I commented out this nect portion and replace with this clear and pool vector from above.
+//   app.stage.children
+//     .filter(child => child.name === 'magneticFieldSymbol')
+//     .forEach(child => app.stage.removeChild(child));
 
   const fieldStrength = Math.abs(magneticField.z);
   if (fieldStrength === 0) return;
@@ -231,10 +357,18 @@ export function drawMagneticForcesOnAllCharges(
   colorPalette: any,
 ) {
   if (!app) return
-  app.stage.children
-    .filter(child => child.name?.startsWith('magneticForceVector-'))
-    .forEach(child => app!.stage.removeChild(child))
 
+  // Clear all force vectors (both magnetic and electric) using pooling
+  clearAndPoolVectors(app, child =>
+    child.name?.startsWith('magneticForceVector-') ||
+    child.name === 'electricForceVector' ||
+    child.name?.startsWith('electricForceVector-from-')
+  );
+
+  // If forces are hidden, don't draw new ones
+  if (!chargesStore.showForces) return
+
+  // Draw forces for each charge
   chargesStore.charges.forEach(charge => {
     drawMagneticForce(app!, charge, chargesStore.magneticField, colorPalette)
   })

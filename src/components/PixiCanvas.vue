@@ -8,9 +8,9 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { AnimationMode, useChargesStore } from '@/stores/charges';
-import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawVelocityOnAllCharges, removeFields } from '@/utils/drawingUtils';
-import { calculateMagneticForce } from '@/utils/mathUtils';
-import { ANIMATION_SPEED, FORCE_SCALING } from '@/consts';
+import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawElectricForceForCharge, drawVelocityOnAllCharges, removeFields } from '@/utils/drawingUtils';
+import { calculateMagneticForce, calculateElectricForce, calculateElectricField } from '@/utils/mathUtils';
+import { ANIMATION_SPEED, FORCE_SCALING, FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH } from '@/consts';
 import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
 import { useSettingsStore } from '@/stores/settings'
 import { ColorPalettes } from '@/utils/colorPalettes'
@@ -21,6 +21,11 @@ const palette = computed(() => {
   return ColorPalettes[settingsStore.colorblindMode]
 })
 
+// Constants used for field drawing
+const MIN_ALPHA = 0.15;
+const MAX_ALPHA = 1.0;
+const LOG_SCALE_FACTOR = 2;
+
 const fieldReadout = ref('');
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
@@ -29,8 +34,38 @@ const trailGraphicsMap = new Map<string, PIXI.Graphics>(); // keep track of draw
 
 let animationFrameId: number;
 let app: PIXI.Application | null = null;
+let lastForceUpdateTime = 0;
+const FORCE_UPDATE_THROTTLE = 100; // Only update forces every 100ms during drag
+let isDragging = false;
+let needsForceUpdate = false;
 
 const MOVEMENT_STEP = 10; // pixels per keypress
+
+// Function to actually update the forces
+function updateElectricForces() {
+  if (!app || !chargesStore.showForces || chargesStore.mode !== 'electric') {
+    return;
+  }
+
+  // Use non-null assertion since we already checked app is not null
+  const application = app!;
+
+  // Clear existing force vectors
+  application.stage.children
+    .filter(child =>
+      child.name === 'electricForceVector' ||
+      child.name?.startsWith('electricForceVector-from-')
+    )
+    .forEach(child => application.stage.removeChild(child));
+
+  // Calculate and draw new forces
+  calculateElectricForce(chargesStore.charges);
+  chargesStore.charges.forEach(charge => {
+    drawElectricForceForCharge(application, charge);
+  });
+
+  needsForceUpdate = false;
+}
 
 function handleMouseMove(event: MouseEvent) {
   const rect = canvasContainer.value?.getBoundingClientRect();
@@ -213,9 +248,27 @@ onMounted(async () => {
     chargesStore.charges.forEach((charge) => {
       const graphic = chargesGraphics.get(charge.id);
       if (graphic && graphic.dragging) {
+        isDragging = true;
         const newPosition = event.data.getLocalPosition(graphic.parent);
         graphic.position.set(newPosition.x, newPosition.y);
         chargesStore.updateChargePosition(charge.id, { x: newPosition.x, y: newPosition.y });
+
+        // Use optimized field drawing and throttled force updates during drag
+        if (chargesStore.mode === 'electric') {
+          // Use throttled field updates too
+          const now = Date.now();
+          if (now - lastForceUpdateTime > FORCE_UPDATE_THROTTLE) {
+            drawElectricFieldDuringDrag(app!, chargesStore.charges);
+
+            if (chargesStore.showForces) {
+              updateElectricForces();
+            }
+            lastForceUpdateTime = now;
+          } else {
+            // Just mark that we need an update, it will happen at the end of drag
+            needsForceUpdate = true;
+          }
+        }
       }
     });
   });
@@ -229,6 +282,17 @@ onMounted(async () => {
         graphic.alpha = 1;
       }
     });
+
+    // If we were dragging and have a pending update, redraw everything properly
+    if (isDragging) {
+      isDragging = false;
+      if (chargesStore.mode === 'electric') {
+        drawElectricField(app!, chargesStore.charges, palette.value);
+        if (needsForceUpdate && chargesStore.showForces) {
+          updateElectricForces();
+        }
+      }
+    }
   });
 
   app.stage.on('pointerdown', (event) => {
@@ -260,38 +324,74 @@ onMounted(async () => {
     document.body.classList.toggle('dyslexia-font', enabled);
   });
 
-  // Watch for changes in the charges array
+
+  // Watch for changes in the charges array with decreased sensitivity
   watch(
     () => chargesStore.charges,
     (newCharges) => {
-      if (chargesStore.mode === 'electric') {
-        removeFields(app!);
-        drawElectricField(app!, newCharges, palette);
+      if (isDragging && chargesStore.mode === 'electric' && chargesStore.showForces) {
+        // During drag operations, we already handle force updates with throttling
+        // Only update the fields and charges here
+        drawElectricField(app!, newCharges, palette.value);
+        updateChargesOnCanvas(newCharges);
       } else {
-        removeFields(app!);
-        drawMagneticField(app!, chargesStore.magneticField);
-        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
-        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
+        // For non-drag updates, do the full update
+        if (chargesStore.mode === 'electric') {
+          removeFields(app!);
+          drawElectricField(app!, newCharges, palette.value);
+
+          if (chargesStore.showForces) {
+            updateElectricForces();
+          }
+        } else {
+          drawMagneticField(app!, chargesStore.magneticField);
+          drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+          drawVelocityOnAllCharges(app!, chargesStore, palette.value);
+        }
+        updateChargesOnCanvas(newCharges);
       }
-      updateChargesOnCanvas(newCharges);
     },
     { deep: true, immediate: true }
   );
 
-  // Watch for mode and magnetic field changes (code omitted for brevity)
+  // Watch for mode changes
   watch(
     () => chargesStore.mode,
     (newMode) => {
       if (!app) return;
+
+      // Clear all field and force vectors
       app.stage.children
-        .filter(child => child.name === 'fieldVector' || child.name.startsWith('magneticForceVector-') || child.name.startsWith('velocityVector-'))
+        .filter(child =>
+          child.name === 'fieldVector' ||
+          child.name === 'electricForceVector' ||
+          child.name?.startsWith('electricForceVector-from-') ||
+          child.name?.startsWith('magneticForceVector-') || 
+          child.name.startsWith('velocityVector-')
+        )
         .forEach(child => app!.stage.removeChild(child));
 
       if (newMode === 'electric') {
         removeFields(app!);
         drawElectricField(app, chargesStore.charges, palette.value);
+
+        // Draw forces if enabled
+        if (chargesStore.showForces) {
+          updateElectricForces();
+        }
       } else {
         removeFields(app!);
+
+        // Clean up any remaining electric-specific elements
+        app.stage.children
+          .filter(child =>
+            child.name === 'fieldVector' ||
+            child.name === 'electricForceVector' ||
+            child.name?.startsWith('electricForceVector-from-')
+          )
+          .forEach(child => app!.stage.removeChild(child));
+
+
         drawMagneticField(app!, chargesStore.magneticField);
         drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
         drawVelocityOnAllCharges(app!, chargesStore, palette.value);
@@ -438,6 +538,131 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     text.position.set(0, 0);
   });
 };
+
+// Add a watch for showForces changes
+watch(
+  () => chargesStore.showForces,
+  (showForces) => {
+    if (!app) return;
+
+    // Clear existing electric force vectors - more thorough cleanup
+    app!.stage.children
+      .filter(child =>
+        child.name === 'electricForceVector' ||
+        child.name.startsWith('electricForceVector-from-') ||
+        child.name?.startsWith('magneticForceVector-')
+      )
+      .forEach(child => app!.stage.removeChild(child));
+
+    // Only redraw if in electric mode and showForces is true
+    if (chargesStore.mode === 'electric' && showForces) {
+      console.log("Showing electric forces, charge count:", chargesStore.charges.length);
+
+      calculateElectricForce(chargesStore.charges);
+
+      // Log more detailed info about the forces
+      chargesStore.charges.forEach(charge => {
+        console.log(`Charge ${charge.id} (${charge.polarity}, ${charge.magnitude}C):`);
+        console.log(`- Total force: magnitude = ${charge.electricForce?.totalForce?.magnitude.toExponential(4)}, direction = (${charge.electricForce?.totalForce?.direction.x.toFixed(2)}, ${charge.electricForce?.totalForce?.direction.y.toFixed(2)})`);
+
+        if (charge.electricForce?.partialForces) {
+          console.log(`- Partial forces (${charge.electricForce.partialForces.length}):`);
+          charge.electricForce.partialForces.forEach(pf => {
+            const sourceId = pf.sourceChargeId || 'unknown';
+            console.log(`  - From charge ${sourceId}: magnitude = ${pf.magnitude.toExponential(4)}, direction = (${pf.direction.x.toFixed(2)}, ${pf.direction.y.toFixed(2)})`);
+          });
+        }
+
+        drawElectricForceForCharge(app!, charge);
+      });
+    } else if (chargesStore.mode === 'magnetic' && showForces) {
+      console.log("Showing magnetic forces, charge count:", chargesStore.charges.length);
+      // Re-draw magnetic forces
+      drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+    }
+  }
+);
+
+// Add an optimized electric field drawing function during drag
+function drawElectricFieldDuringDrag(app: PIXI.Application, charges: Charge[]) {
+  if (!app) return;
+
+  // Use a larger spacing during drag to improve performance
+  const LARGER_SPACING = FIELD_SPACING * 2;
+
+  // Clear existing field vectors
+  app.stage.children
+    .filter(child => child.name === 'fieldVector')
+    .forEach(child => app.stage.removeChild(child));
+
+  // Draw electric field with a larger spacing
+  if (charges.length === 0) return;
+
+  let maxFieldMagnitude = 0;
+  let minFieldMagnitude = Infinity;
+
+  // First pass to find min/max magnitudes for proper scaling
+  for (let x = 0; x < app.screen.width; x += LARGER_SPACING) {
+    for (let y = 0; y < app.screen.height; y += LARGER_SPACING) {
+      const fieldVector = { x: 0, y: 0 };
+      charges.forEach(charge => {
+        const chargeField = calculateElectricField(
+          charge.position,
+          charge.magnitude,
+          { x, y },
+          charge.polarity === 'positive',
+        );
+        fieldVector.x += chargeField.x;
+        fieldVector.y += chargeField.y;
+      });
+
+      const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2);
+      maxFieldMagnitude = Math.max(maxFieldMagnitude, magnitude);
+      if (magnitude > 0) {
+        minFieldMagnitude = Math.min(minFieldMagnitude, magnitude);
+      }
+    }
+  }
+
+  // Draw the vectors with optimized settings
+  for (let x = 0; x < app.screen.width; x += LARGER_SPACING) {
+    for (let y = 0; y < app.screen.height; y += LARGER_SPACING) {
+      const fieldVector = { x: 0, y: 0 };
+      charges.forEach(charge => {
+        const chargeField = calculateElectricField(
+          charge.position,
+          charge.magnitude,
+          { x, y },
+          charge.polarity === 'positive',
+        );
+        fieldVector.x += chargeField.x;
+        fieldVector.y += chargeField.y;
+      });
+
+      const magnitude = Math.sqrt(fieldVector.x ** 2 + fieldVector.y ** 2);
+      // Skip vectors with very small magnitudes during drag
+      if (magnitude < minFieldMagnitude * 5) continue;
+
+      const logMin = Math.log(minFieldMagnitude || 1e-10);
+      const logMax = Math.log(maxFieldMagnitude);
+      const logCurrent = Math.log(magnitude || 1e-10);
+      const normalizedMagnitude = (logCurrent - logMin) / (logMax - logMin);
+      const alpha = MIN_ALPHA + (MAX_ALPHA - MIN_ALPHA) * Math.pow(normalizedMagnitude, 1 / LOG_SCALE_FACTOR);
+      const length = Math.min(magnitude * VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH);
+
+      // Draw field vector with simple style
+      const arrow = new PIXI.Graphics();
+      arrow.name = 'fieldVector';
+      arrow.zIndex = 0;
+      arrow.lineStyle(2, 0xffffff, alpha);
+      arrow.moveTo(x, y);
+      const endX = x + (fieldVector.x / magnitude) * length;
+      const endY = y + (fieldVector.y / magnitude) * length;
+      arrow.lineTo(endX, endY);
+      app.stage.addChild(arrow);
+    }
+  }
+}
 </script>
 
 <style scoped>

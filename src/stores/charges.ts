@@ -11,6 +11,14 @@ export interface Charge {
     magnitude: number
     direction: { x: number; y: number }
   }
+  electricForce: {
+    partialForces: {
+      direction: { x: number; y: number };
+      magnitude: number;
+      sourceChargeId?: string; // ID of the charge causing this force
+    }[]
+    totalForce: { magnitude: number; direction: { x: number; y: number } }
+  }
   force?: { x: number; y: number; z: number } // Optional: Magnetic force vector
   preAnimationPosition?: { x: number; y: number } // position on canvas before animation starts
   preAnimationVelocity?: {
@@ -42,6 +50,8 @@ export const useChargesStore = defineStore('charges', {
 
     // Uniform magnetic field state (in Teslas, e.g. { x: 0, y: 0, z: 1 })
     magneticField: { x: 0, y: 0, z: 0 },
+    isAnimating: false,
+    showForces: true,
     animationMode: AnimationMode.stop,
   }),
 
@@ -59,6 +69,13 @@ export const useChargesStore = defineStore('charges', {
           magnitude: charge.velocity.magnitude || 1,
           direction: { x: charge.velocity.direction.x || 0, y: charge.velocity.direction.y || 0 }
         },
+        electricForce: {
+          partialForces: [],
+          totalForce: {
+            magnitude: 0,
+            direction: { x: 0, y: 0 }
+          }
+        }
       }
       this.charges.push(newCharge)
     },
@@ -99,7 +116,29 @@ export const useChargesStore = defineStore('charges', {
 
     // Switch between "electric" or "magnetic" mode
     setMode(mode: SimulationMode) {
-      this.mode = mode
+      // If we're actually changing modes (not just re-setting the same mode)
+      if (this.mode !== mode) {
+        const previousMode = this.mode;
+        this.mode = mode;
+
+        // Reset animation when switching modes
+        if (this.isAnimating) {
+          this.resetAnimation();
+        }
+
+        // When returning to electric mode, ensure the UI is freshly updated
+        if (mode === 'electric' && previousMode === 'magnetic') {
+          // Trigger reactivity by toggling and toggling back if forces are showing
+          if (this.showForces) {
+            // This is a hack to ensure reactive updates when needed
+            const currentShowForces = this.showForces;
+            this.showForces = !currentShowForces;
+            setTimeout(() => {
+              this.showForces = currentShowForces;
+            }, 0);
+          }
+        }
+      }
     },
 
     // Set the uniform magnetic field (in Teslas)
@@ -136,11 +175,26 @@ export const useChargesStore = defineStore('charges', {
         delete charge.trailSampleCounter;
       });
     },
+
+    toggleShowForces() {
+      this.showForces = !this.showForces;
+
+      // When toggling forces, ensure we're calculating electric forces if needed
+      if (this.mode === 'electric' && this.showForces && this.charges.length > 1) {
+        // We trigger a reactivity update here to ensure that any components watching showForces
+        // receive the update and redraw the forces correctly
+        setTimeout(() => {
+          // This just triggers reactivity without changing any values
+          this.charges = [...this.charges];
+        }, 0);
+      }
+    },
   },
 })
 
 export interface ChargesStore extends Store {
   charges: Charge[];
   magneticField: { x: number; y: number; z: number };
+  showForces: boolean;
 }
 

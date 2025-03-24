@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import PixiCanvas from './components/PixiCanvas.vue';
-import ControlBar from './components/ControlBar.vue';
-import { useSettingsStore } from '@/stores/settings';
+  import { ref } from 'vue';
+  import PixiCanvas from './components/PixiCanvas.vue';
+  import ControlBar from './components/ControlBar.vue';
+  import { useChargesStore } from './stores/charges';
+  import { computed } from 'vue';
+  import { useSettingsStore } from '@/stores/settings';
 
-const settingsStore = useSettingsStore();
-const drawerOpen = ref(true);
+  const settingsStore = useSettingsStore();
+  const drawerOpen = ref(true);
+
+  const chargesStore = useChargesStore();
+
+  // Creating a key that will change whenever the mode or showForces state changes
+  const controlBarKey = computed(() => `${chargesStore.mode}-${chargesStore.showForces}`);
 </script>
 
 <template>
@@ -13,6 +20,8 @@ const drawerOpen = ref(true);
     :class="{ 'dyslexia-font': settingsStore.dyslexiaMode }">
     <!-- Main canvas area -->
     <PixiCanvas />
+
+    <ControlBar :key="controlBarKey" />
 
     <!-- Toggle Tab Button -->
     <button @click="drawerOpen = !drawerOpen" class="absolute z-30 right-0 top-1/2 -translate-y-1/2 translate-x-1/2
@@ -47,6 +56,7 @@ const drawerOpen = ref(true);
 </template>
 
 <style>
+
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
 
 body {
