@@ -662,6 +662,7 @@ function drawElectricFieldDuringDrag(app: PIXI.Application, charges: Charge[]) {
     }
   }
 }
+}
 </script>
 
 <style scoped>

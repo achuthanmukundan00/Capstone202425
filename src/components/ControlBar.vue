@@ -476,16 +476,16 @@ const handleDeselect = () => {
 const settingsStore = useSettingsStore()
 const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] as const;
 // Toggle function cycles through the modes
-const toggleColorblindMode = () => {
-  const currentIndex = colorblindModes.value.indexOf(selectedColorblindMode.value);
-  const nextIndex = (currentIndex + 1) % colorblindModes.value.length;
-  selectedColorblindMode.value = colorblindModes.value[nextIndex];
+//const toggleColorblindMode = () => {
+  //const currentIndex = colorblindModes.value.indexOf(selectedColorblindMode.value);
+  //const nextIndex = (currentIndex + 1) % colorblindModes.value.length;
+  //selectedColorblindMode.value = colorblindModes.value[nextIndex];
 
   // Update the document body (or a wrapper element) with the new mode's class.
   // This will allow CSS rules to apply different color schemes.
-  document.body.classList.remove(...colorblindModes.value);
-  document.body.classList.add(selectedColorblindMode.value);
-};
+  //document.body.classList.remove(...colorblindModes.value);
+  //document.body.classList.add(selectedColorblindMode.value);
+//};
 
 // Add the toggle function
 const toggleForceVisibility = () => {
