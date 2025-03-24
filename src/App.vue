@@ -1,12 +1,19 @@
 <script setup lang="ts">
   import PixiCanvas from './components/PixiCanvas.vue';
   import ControlBar from './components/ControlBar.vue';
+  import { useChargesStore } from './stores/charges';
+  import { computed } from 'vue';
+
+  const chargesStore = useChargesStore();
+
+  // Creating a key that will change whenever the mode or showForces state changes
+  const controlBarKey = computed(() => `${chargesStore.mode}-${chargesStore.showForces}`);
 </script>
 
 <template>
    <div id="app">
     <PixiCanvas />
-    <ControlBar />
+    <ControlBar :key="controlBarKey" />
   </div>
 </template>
 

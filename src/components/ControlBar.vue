@@ -27,6 +27,14 @@
       <RangeSlider v-model="chargeValueNum" :min="CHARGE_MAGNITUDE_BOUNDS.MIN" :max="CHARGE_MAGNITUDE_BOUNDS.MAX"
         :step="CHARGE_MAGNITUDE_BOUNDS.STEP" label="Charge Magnitude" unit="C" :precision="1" />
 
+      <!-- <template v-if="mode === 'electric'">
+        <div class="form-group">
+          <button @click="toggleForceVisibility" class="action-button force-toggle">
+            {{ chargesStore.showForces ? 'Hide Forces' : 'Show Forces' }}
+          </button>
+        </div>
+      </template> -->
+
       <template v-if="mode === 'magnetic'">
         <RangeSlider v-model="magneticFieldValueNum" :min="MAGNETIC_FIELD_BOUNDS.MIN" :max="MAGNETIC_FIELD_BOUNDS.MAX"
           :step="MAGNETIC_FIELD_BOUNDS.STEP" label="Magnetic Field Strength" unit="T" :precision="1" />
@@ -113,6 +121,11 @@
         <!-- Colorblind Button -->
         <button class="action-button colorblind-toggle" @click="toggleColorblindMode">
           Colorblind Mode: {{ selectedColorblindMode }}
+        </button>
+
+        <!-- Force Toggle Button - only in electric mode -->
+        <button v-if="mode === 'electric'" class="action-button force-toggle" @click="toggleForceVisibility">
+          {{ chargesStore.showForces ? 'Hide Forces' : 'Show Forces' }}
         </button>
       </div>
     </div>
@@ -235,6 +248,13 @@ const handleAddCharge = () => {
         x: dirX / length,
         y: dirY / length
       }
+    },
+    electricForce: {
+      partialForces: [],
+      totalForce: {
+        magnitude: 0,
+        direction: { x: 0, y: 0 }
+      }
     }
   });
 
@@ -286,6 +306,26 @@ const setMode = (newMode: SimulationMode) => {
   chargesStore.setMode(newMode);
 };
 
+// Add a watch for mode changes to ensure UI updates properly
+watch(() => chargesStore.mode, (newMode) => {
+  console.log(`Mode changed to: ${newMode}`);
+  // Force reactive updates when switching between modes
+  // This ensures the correct sidebar UI is displayed
+  if (newMode === 'electric') {
+    // If coming back to electric mode, check if we need to reset any state
+    if (chargesStore.selectedChargeId === null) {
+      resetForm();
+    }
+  } else {
+    // If switching to magnetic mode, ensure magnetic-specific fields are reset appropriately
+    if (magneticFieldValue.value === '0' && chargesStore.magneticField.z !== 0) {
+      // Sync UI with actual magnetic field value from store
+      magneticFieldValue.value = Math.abs(chargesStore.magneticField.z).toString();
+      magneticFieldDirection.value = chargesStore.magneticField.z >= 0 ? 'out' : 'in';
+    }
+  }
+});
+
 const magneticFieldValueNum = computed({
   get: () => Number(magneticFieldValue.value) || 0,
   set: (val: number) => { magneticFieldValue.value = val.toString(); }
@@ -316,6 +356,11 @@ const toggleColorblindMode = () => {
   // This will allow CSS rules to apply different color schemes.
   document.body.classList.remove(...colorblindModes.value);
   document.body.classList.add(selectedColorblindMode.value);
+};
+
+// Add the toggle function
+const toggleForceVisibility = () => {
+  chargesStore.toggleShowForces();
 };
 </script>
 
@@ -549,4 +594,19 @@ body.tritanopia .controls-container {
   background-color: #c0c0c0;
 }
 
+.force-toggle {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #9b59b6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.force-toggle:hover {
+  background-color: #8e44ad;
+}
 </style>
