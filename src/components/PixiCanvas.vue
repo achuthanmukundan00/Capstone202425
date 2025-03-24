@@ -65,6 +65,7 @@ function updateElectricForces() {
   });
 
   needsForceUpdate = false;
+}
 
 function handleMouseMove(event: MouseEvent) {
   const rect = canvasContainer.value?.getBoundingClientRect();
