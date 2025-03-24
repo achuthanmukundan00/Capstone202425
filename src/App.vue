@@ -21,8 +21,6 @@
     <!-- Main canvas area -->
     <PixiCanvas />
 
-    <ControlBar :key="controlBarKey" />
-
     <!-- Toggle Tab Button -->
     <button @click="drawerOpen = !drawerOpen" class="absolute z-30 right-0 top-1/2 -translate-y-1/2 translate-x-1/2
        w-10 h-12 bg-gray-900 hover:bg-gray-800 text-white shadow-lg
@@ -49,7 +47,7 @@
     <transition name="slide">
       <div v-show="drawerOpen"
         class="w-[320px] h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out">
-        <ControlBar />
+        <ControlBar :key="controlBarKey" />
       </div>
     </transition>
   </div>
