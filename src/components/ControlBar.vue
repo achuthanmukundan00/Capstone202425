@@ -924,4 +924,54 @@ body.dark-mode .delete-button {
 body.dark-mode .delete-button:hover:not(:disabled) {
   background-color: #a93226;
 }
+
+/* Mobile styles */
+@media screen and (max-width: 600px) {
+  .controls-container {
+    width: 100%;
+    min-width: unset;
+    padding: 10px 15px 10px 10px; /* extra right padding */
+    max-height: 100vh;
+    overflow-y: auto; /* Vertical scroll if needed */
+    overflow-x: auto; /* Allow horizontal scroll if absolutely necessary */
+    box-sizing: border-box; /* Ensure padding is included in the width */
+  }
+
+  .header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .outlined-icon-button {
+    padding: 4px 6px;
+    font-size: 0.8rem;
+  }
+
+  .charge-form {
+    padding: 10px;
+  }
+
+  .input-field {
+    padding: 6px;
+    font-size: 0.9rem;
+  }
+
+  .mode-toggle {
+    margin-bottom: 16px;
+  }
+
+  /* Ensure text wraps correctly */
+  .selection-controls,
+  .settings-modal,
+  .form-group {
+    overflow-wrap: break-word;
+  }
+}
+
+
 </style>
