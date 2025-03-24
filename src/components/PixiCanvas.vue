@@ -258,7 +258,7 @@ onMounted(async () => {
           // Use throttled field updates too
           const now = Date.now();
           if (now - lastForceUpdateTime > FORCE_UPDATE_THROTTLE) {
-            drawElectricFieldDuringDrag(app!, chargesStore.charges);
+            drawElectricFieldDuringDrag(app!, chargesStore.charges, palette.value);
 
             if (chargesStore.showForces) {
               updateElectricForces();
@@ -287,7 +287,7 @@ onMounted(async () => {
     if (isDragging) {
       isDragging = false;
       if (chargesStore.mode === 'electric') {
-        drawElectricField(app!, chargesStore.charges);
+        drawElectricField(app!, chargesStore.charges, palette.value);
         if (needsForceUpdate && chargesStore.showForces) {
           updateElectricForces();
         }
@@ -332,13 +332,13 @@ onMounted(async () => {
       if (isDragging && chargesStore.mode === 'electric' && chargesStore.showForces) {
         // During drag operations, we already handle force updates with throttling
         // Only update the fields and charges here
-        drawElectricField(app!, newCharges);
+        drawElectricField(app!, newCharges, palette.value);
         updateChargesOnCanvas(newCharges);
       } else {
         // For non-drag updates, do the full update
         if (chargesStore.mode === 'electric') {
           removeFields(app!);
-          drawElectricField(app!, newCharges);
+          drawElectricField(app!, newCharges, palette.value);
 
           if (chargesStore.showForces) {
             updateElectricForces();
@@ -373,7 +373,7 @@ onMounted(async () => {
 
       if (newMode === 'electric') {
         removeFields(app!);
-        drawElectricField(app, chargesStore.charges);
+        drawElectricField(app, chargesStore.charges, palette.value);
 
         // Draw forces if enabled
         if (chargesStore.showForces) {
