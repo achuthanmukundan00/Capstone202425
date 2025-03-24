@@ -79,6 +79,21 @@ body.dyslexia-font * {
   font-family: 'OpenDyslexic', sans-serif !important;
 }
 
+body.dark-mode {
+  background-color: #121212;
+  color: #eee;
+}
+
+body.dark-mode .controls-container {
+  background-color: #1e1e1e;
+  color: #eee;
+}
+
+body.dark-mode .settings-modal {
+  background-color: #1e1e1e;
+  color: #eee;
+}
+
 /* Slide transition */
 .slide-enter-active,
 .slide-leave-active {
