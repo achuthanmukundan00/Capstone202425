@@ -1,24 +1,36 @@
 <template>
-  <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container"></div>
+  <div ref="canvasContainer" style="width: 100%; height: 100%;" class="canvas-container">
+    <div class="field-readout">{{ fieldReadout }}</div>
+  </div>
 </template>
-
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
-import { useChargesStore } from '@/stores/charges';
-import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawElectricForceForCharge } from '@/utils/drawingUtils';
+import { AnimationMode, useChargesStore } from '@/stores/charges';
+import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawElectricForceForCharge, drawVelocityOnAllCharges, removeFields } from '@/utils/drawingUtils';
 import { calculateMagneticForce, calculateElectricForce, calculateElectricField } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING, FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH } from '@/consts';
+import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
+import { useSettingsStore } from '@/stores/settings'
+import { ColorPalettes } from '@/utils/colorPalettes'
+
+const settingsStore = useSettingsStore()
+// Compute the palette based on the mode
+const palette = computed(() => {
+  return ColorPalettes[settingsStore.colorblindMode]
+})
 
 // Constants used for field drawing
 const MIN_ALPHA = 0.15;
 const MAX_ALPHA = 1.0;
 const LOG_SCALE_FACTOR = 2;
 
+const fieldReadout = ref('');
 const canvasContainer = ref<HTMLElement | null>(null);
 const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
+const trailGraphicsMap = new Map<string, PIXI.Graphics>(); // keep track of drawn trails (k: charge.id, value: trail)
 
 let animationFrameId: number;
 let app: PIXI.Application | null = null;
@@ -53,6 +65,27 @@ function updateElectricForces() {
   });
 
   needsForceUpdate = false;
+
+function handleMouseMove(event: MouseEvent) {
+  const rect = canvasContainer.value?.getBoundingClientRect();
+  if (!rect) return;
+
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  if (chargesStore.mode === 'electric') {
+    const field = getNetElectricFieldAtPoint({ x, y });
+    fieldReadout.value = `Ex: ${(field.x / 1e3).toFixed(2)} kN/C, Ey: ${(-field.y / 1e3).toFixed(2)} kN/C`;
+  } else if (chargesStore.mode === 'magnetic') {
+    const selected = chargesStore.charges.find(c => c.id === chargesStore.selectedChargeId);
+    if (!selected) {
+      fieldReadout.value = `Fx: -- N, Fy: -- N`;
+      return;
+    }
+
+    const force = calculateMagneticForce(selected, chargesStore.magneticField);
+    fieldReadout.value = `Fx: ${force.x.toFixed(2)} N, Fy: ${-force.y.toFixed(2)} N`;
+  }
 }
 
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -107,26 +140,94 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
-const updateChargeMotion = () => {
-  if (!chargesStore.isAnimating) return;
+const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
+  // Initialize the trail array if it doesn't exist
+  if (!charge.trail) {
+    charge.trail = [];
+  }
+  const scaleFactor = window.innerWidth < 600 ? 0.6 : 1.0;
 
-  chargesStore.charges.forEach(charge => {
+  if (charge.trailSampleCounter === undefined) {
+    charge.trailSampleCounter = 0;
+  }
+
+  const minDistance = 25 * scaleFactor; // Minimum distance traveled before taking a sample
+
+  // Calculate distance from last sampled position
+  if (charge.trail.length === 0 ||
+    Math.hypot(
+      charge.position.x - charge.trail[charge.trail.length - 1].x,
+      charge.position.y - charge.trail[charge.trail.length - 1].y
+    ) >= minDistance) {
+
+    // Push a snapshot of the position
+    charge.trail.push({ x: charge.position.x, y: charge.position.y });
+  }
+
+  // Clear the previous trail drawing
+  trailGraphics.clear();
+
+  // Option 1: Draw small dots along the trail
+  const dotRadius = 8 * scaleFactor;
+  trailGraphics.beginFill(0xffffff, 0.7);
+  for (const pos of charge.trail) {
+    trailGraphics.drawCircle(pos.x, pos.y, dotRadius);
+  }
+  trailGraphics.endFill();
+};
+
+const clearTrails = () => {
+  trailGraphicsMap.forEach(trailGraphic => {
+    if (app) {
+      app.stage.removeChild(trailGraphic);
+    }
+  });
+  trailGraphicsMap.clear();
+};
+
+const updateChargeMotion = () => {
+  if (chargesStore.animationMode == AnimationMode.reset) {
+    clearTrails();
+    return;
+  }
+  else if (chargesStore.animationMode == AnimationMode.stop) {
+    return;
+  }
+  else {
+    chargesStore.charges.forEach(charge => {
     const force = calculateMagneticForce(charge, chargesStore.magneticField);
     charge.velocity.direction.x += force.x * FORCE_SCALING;
     charge.velocity.direction.y += force.y * FORCE_SCALING;
     charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
     charge.position.y += charge.velocity.direction.y * ANIMATION_SPEED;
+
+    let trailGraphics = trailGraphicsMap.get(charge.id);
+    if (!trailGraphics) {
+      trailGraphics = new PIXI.Graphics();
+      // Ensure the trail renders behind the charge
+      trailGraphics.zIndex = 5;
+      trailGraphicsMap.set(charge.id, trailGraphics);
+      app!.stage.addChild(trailGraphics);
+    }
+
+    updateChargeTrail(charge, trailGraphics);
   });
-  animationFrameId = requestAnimationFrame(updateChargeMotion);
+  }
 };
 
 onMounted(async () => {
   // Initialize PixiJS Application
-  app = new PIXI.Application();
+  app = new PIXI.Application({
+    resolution: 2,
+    autoDensity: true,
+    antialias: true,
+  });
   await app.init({
     width: window.innerWidth,
     height: window.innerHeight
   });
+
+  canvasContainer.value?.addEventListener('mousemove', handleMouseMove);
 
   // Enable zIndex sorting so that graphics with higher zIndex render on top
   app.stage.sortableChildren = true;
@@ -199,6 +300,30 @@ onMounted(async () => {
     }
   });
 
+  // Watch for changes in colorblind mode.
+  watch(
+    () => settingsStore.colorblindMode,
+    (newMode) => {
+      console.log('Colorblind mode changed to:', newMode);
+
+      if (chargesStore.mode === 'electric') {
+        removeFields(app!);
+        drawElectricField(app!, chargesStore.charges, palette.value);
+      } else {
+        removeFields(app!);
+        drawMagneticField(app!, chargesStore.magneticField);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
+      }
+      updateChargesOnCanvas(chargesStore.charges);
+    }
+  );
+
+  watch(() => settingsStore.dyslexiaMode, (enabled) => {
+    document.body.classList.toggle('dyslexia-font', enabled);
+  });
+
+
   // Watch for changes in the charges array with decreased sensitivity
   watch(
     () => chargesStore.charges,
@@ -211,6 +336,7 @@ onMounted(async () => {
       } else {
         // For non-drag updates, do the full update
         if (chargesStore.mode === 'electric') {
+          removeFields(app!);
           drawElectricField(app!, newCharges);
 
           if (chargesStore.showForces) {
@@ -219,6 +345,7 @@ onMounted(async () => {
         } else {
           drawMagneticField(app!, chargesStore.magneticField);
           drawMagneticForcesOnAllCharges(app!, chargesStore);
+          drawVelocityOnAllCharges(app!, chargesStore, palette.value);
         }
         updateChargesOnCanvas(newCharges);
       }
@@ -238,11 +365,13 @@ onMounted(async () => {
           child.name === 'fieldVector' ||
           child.name === 'electricForceVector' ||
           child.name?.startsWith('electricForceVector-from-') ||
-          child.name?.startsWith('magneticForceVector-')
+          child.name?.startsWith('magneticForceVector-') || 
+          child.name.startsWith('velocityVector-')
         )
         .forEach(child => app!.stage.removeChild(child));
 
       if (newMode === 'electric') {
+        removeFields(app!);
         drawElectricField(app, chargesStore.charges);
 
         // Draw forces if enabled
@@ -250,6 +379,8 @@ onMounted(async () => {
           updateElectricForces();
         }
       } else {
+        removeFields(app!);
+
         // Clean up any remaining electric-specific elements
         app.stage.children
           .filter(child =>
@@ -259,8 +390,10 @@ onMounted(async () => {
           )
           .forEach(child => app!.stage.removeChild(child));
 
+
         drawMagneticField(app!, chargesStore.magneticField);
-        drawMagneticForcesOnAllCharges(app!, chargesStore);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
       }
     }
   );
@@ -269,13 +402,14 @@ onMounted(async () => {
     () => chargesStore.magneticField,
     () => {
       if (chargesStore.mode === 'magnetic') {
+        removeFields(app!);
         drawMagneticField(app!, chargesStore.magneticField)
-        drawMagneticForcesOnAllCharges(app!, chargesStore);
+        drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+        drawVelocityOnAllCharges(app!, chargesStore, palette.value);
       }
     },
     { deep: true, immediate: true }
   );
-
   // Add keyboard event listener
   window.addEventListener('keydown', handleKeyDown);
 
@@ -285,7 +419,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  canvasContainer.value?.removeEventListener('mousemove', handleMouseMove);
   cancelAnimationFrame(animationFrameId);
+
   if (app) {
     app.destroy(true, { children: true });
     app = null;
@@ -297,11 +433,17 @@ onBeforeUnmount(() => {
 const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
+    app.renderer.resolution = window.devicePixelRatio || 1;
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+
     if (chargesStore.mode === 'electric') {
-      drawElectricField(app, chargesStore.charges);
+      removeFields(app!);
+      drawElectricField(app, chargesStore.charges, palette.value);
     } else {
+      removeFields(app!);
       drawMagneticField(app!, chargesStore.magneticField)
-      drawMagneticForcesOnAllCharges(app!, chargesStore);
+      drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
+      drawVelocityOnAllCharges(app!, chargesStore, palette.value);
     }
     updateChargesOnCanvas(chargesStore.charges);
   }
@@ -309,6 +451,8 @@ const resize = () => {
 
 const updateChargesOnCanvas = (charges: Charge[]) => {
   if (!app) return;
+
+  const scaleFactor = window.innerWidth < 600 ? 0.6 : 1.0;
 
   // Remove graphics for charges that no longer exist
   for (const [id, graphic] of chargesGraphics) {
@@ -355,13 +499,14 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       graphic.clear();
     }
 
-    const color = charge.polarity === 'positive' ? 0xD55E00 : 0x0072B2;
+    const color = charge.polarity === 'positive' ? palette.value.chargePositive : palette.value.chargeNegative;
     const polarity = charge.polarity === 'positive' ? "+" : "-";
 
     // Draw the charge circle
+    const radius = 24 * scaleFactor;
     graphic.beginFill(color);
-    graphic.lineStyle(0);
-    graphic.drawCircle(0, 0, 20);
+    // graphic.lineStyle(0);
+    graphic.drawCircle(0, 0, radius);
     graphic.endFill();
 
     // Set position
@@ -370,15 +515,22 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     // Create or update the text label for the charge magnitude
     let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
     if (!text) {
-      text = new PIXI.Text(polarity + charge.magnitude.toString() + 'C', {
-        fontSize: 14,
-        fill: 0xffffff,
-        align: 'center'
+      const labelText = `${polarity}${charge.magnitude}C`;
+      text = new PIXI.Text(labelText, {
+        fontFamily: settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins',
+        fontSize: 16 * scaleFactor,
+        fill: palette.value.chargeText,
+        align: 'center',
       });
+      text.name = 'chargeLabel';
+      text.anchor.set(0.5);
+      text.position.set(0, 0);
       text.name = 'chargeLabel';
       graphic.addChild(text);
     } else {
       text.text = polarity + charge.magnitude.toString() + 'C';
+      text.style.fontFamily = settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins';
+      text.style.fontSize = 16 * scaleFactor;
     }
 
     text.anchor.set(0.5);
@@ -514,8 +666,23 @@ function drawElectricFieldDuringDrag(app: PIXI.Application, charges: Charge[]) {
 
 <style scoped>
 .canvas-container {
-  flex-grow: 1;
+  position: relative;
+  width: 100%;
   height: 100%;
+  flex-grow: 1;
   overflow: hidden;
+}
+
+.field-readout {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  font-family: monospace;
+  border-radius: 4px;
+  pointer-events: none;
 }
 </style>

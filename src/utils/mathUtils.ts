@@ -1,4 +1,5 @@
 import type { Charge } from '@/stores/charges'
+import { useChargesStore } from '@/stores/charges'
 import { K } from '../consts'
 
 // Cache for electric field calculations to avoid recalculating
@@ -195,17 +196,12 @@ export function calculateMagneticForce(
   magneticField: { x: number; y: number; z: number },
 ): { x: number; y: number; z: number } {
   // Cross product: v x B
-  console.log('mag field:', magneticField);
-  console.log('charge', charge);
   const crossProduct = {
     x:
       charge.velocity.magnitude * charge.velocity.direction.y * magneticField.z,
     y: (-1) * charge.velocity.magnitude * charge.velocity.direction.x * magneticField.z,
     z: charge.velocity.magnitude * charge.velocity.direction.x * magneticField.y - charge.velocity.magnitude * charge.velocity.direction.y * magneticField.x,
   }
-  console.log('crossProduct', crossProduct);
-
-
   // Scale by charge magnitude
   return {
     x: charge.magnitude * crossProduct.x,
@@ -235,4 +231,25 @@ export function normalizeAndScale(
     y: (vector.y / magnitude) * scale,
     z: vector.z !== undefined ? (vector.z / magnitude) * scale : undefined,
   }
+}
+
+export function getNetElectricFieldAtPoint(point: { x: number; y: number }) {
+  const store = useChargesStore()
+  const charges = store.charges
+
+  // eslint-disable-next-line
+  let netField = { x: 0, y: 0 }
+
+  charges.forEach(charge => {
+    const field = calculateElectricField(
+      charge.position,
+      charge.magnitude,
+      point,
+      charge.polarity === 'positive'
+    )
+    netField.x += field.x
+    netField.y += field.y
+  })
+
+  return netField
 }

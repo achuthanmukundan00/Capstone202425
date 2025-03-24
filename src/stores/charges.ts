@@ -21,10 +21,24 @@ export interface Charge {
   }
   force?: { x: number; y: number; z: number } // Optional: Magnetic force vector
   preAnimationPosition?: { x: number; y: number } // position on canvas before animation starts
+  preAnimationVelocity?: {
+    magnitude: number
+    direction: { x: number; y: number }
+  }
+  trail?: { x: number; y: number }[]
+  trailSampleCounter?: number
 }
 
 // Add mode type
 export type SimulationMode = 'electric' | 'magnetic';
+export enum AnimationMode {start, stop, reset}
+
+function generateRandomPosition() {
+  // Ensure charges appear fully inside the canvas
+  const x = Math.random() * 0.7 * (innerWidth - 2) + 24;
+  const y = Math.random() * (innerHeight - 2) + 24;
+  return { x, y };
+}
 
 // Create a Pinia store for managing charges
 export const useChargesStore = defineStore('charges', {
@@ -38,6 +52,7 @@ export const useChargesStore = defineStore('charges', {
     magneticField: { x: 0, y: 0, z: 0 },
     isAnimating: false,
     showForces: true,
+    animationMode: AnimationMode.stop,
   }),
 
   // Actions that can be performed on the store
@@ -49,10 +64,10 @@ export const useChargesStore = defineStore('charges', {
         id: crypto.randomUUID(), // Generate unique ID for the charge
         magnitude: charge.magnitude,
         polarity: charge.polarity,
-        position: { x: 400, y: 300 }, // Place charge in the center of canvas initially
+        position: generateRandomPosition(),
         velocity: {
-          magnitude: 0,
-          direction: { x: 0, y: 0 }
+          magnitude: charge.velocity.magnitude || 1,
+          direction: { x: charge.velocity.direction.x || 0, y: charge.velocity.direction.y || 0 }
         },
         electricForce: {
           partialForces: [],
@@ -133,16 +148,31 @@ export const useChargesStore = defineStore('charges', {
 
     startAnimation() {
       this.charges.forEach(charge => {
-        charge.preAnimationPosition = { x: charge.position.x, y: charge.position.y }
-      })
-      this.isAnimating = true;
+        charge.preAnimationPosition = charge.preAnimationPosition ?? { x: charge.position.x, y: charge.position.y };
+        charge.preAnimationVelocity = charge.preAnimationVelocity ?? {
+          magnitude: charge.velocity.magnitude,
+          direction: {
+            x: charge.velocity.direction.x,
+            y: charge.velocity.direction.y
+          }
+        };
+      });
+      this.animationMode = AnimationMode.start;
+    },
+
+    stopAnimation() {
+      this.animationMode = AnimationMode.stop;
     },
 
     resetAnimation() {
-      this.isAnimating = false;
+      this.animationMode = AnimationMode.reset;
       this.charges.forEach(charge => {
         charge.position = { x: charge.preAnimationPosition?.x ?? 300, y: charge.preAnimationPosition?.y ?? 400 };
-        charge.velocity = { magnitude: 0, direction: { x: 0, y: 0 } };
+        charge.velocity = { magnitude: charge.preAnimationVelocity?.magnitude ?? 0, direction: charge.preAnimationVelocity?.direction ?? { x: 0, y: 0}};
+        delete charge.preAnimationPosition;
+        delete charge.preAnimationVelocity;
+        charge.trail = [];
+        delete charge.trailSampleCounter;
       });
     },
 
