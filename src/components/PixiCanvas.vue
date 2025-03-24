@@ -42,10 +42,10 @@ let needsForceUpdate = false;
 const MOVEMENT_STEP = 10; // pixels per keypress
 
 // Function to actually update the forces
-function updateElectricForces() {
-  if (!app || !chargesStore.showForces || chargesStore.mode !== 'electric') {
-    return;
-  }
+//function updateElectricForces() {
+//  if (!app || !chargesStore.showForces || chargesStore.mode !== 'electric') {
+  //  return;
+  //}
 
   // Use non-null assertion since we already checked app is not null
   const application = app!;
