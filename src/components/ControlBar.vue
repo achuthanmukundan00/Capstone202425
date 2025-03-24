@@ -453,6 +453,7 @@ const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] 
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap; /* Allow items to wrap instead of overflowing */
   margin-bottom: 20px;
   gap: 12px;
 }
