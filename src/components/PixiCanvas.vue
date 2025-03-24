@@ -258,7 +258,7 @@ onMounted(async () => {
           // Use throttled field updates too
           const now = Date.now();
           if (now - lastForceUpdateTime > FORCE_UPDATE_THROTTLE) {
-            drawElectricFieldDuringDrag(app!, chargesStore.charges, palette.value);
+            drawElectricFieldDuringDrag(app!, chargesStore.charges);
 
             if (chargesStore.showForces) {
               updateElectricForces();
@@ -345,7 +345,7 @@ onMounted(async () => {
           }
         } else {
           drawMagneticField(app!, chargesStore.magneticField);
-          drawMagneticForcesOnAllCharges(app!, chargesStore);
+          drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
           drawVelocityOnAllCharges(app!, chargesStore, palette.value);
         }
         updateChargesOnCanvas(newCharges);
@@ -578,7 +578,7 @@ watch(
     } else if (chargesStore.mode === 'magnetic' && showForces) {
       console.log("Showing magnetic forces, charge count:", chargesStore.charges.length);
       // Re-draw magnetic forces
-      drawMagneticForcesOnAllCharges(app!, chargesStore);
+      drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
     }
   }
 );
