@@ -111,12 +111,13 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
   if (!charge.trail) {
     charge.trail = [];
   }
+  const scaleFactor = window.innerWidth < 600 ? 0.6 : 1.0;
 
   if (charge.trailSampleCounter === undefined) {
     charge.trailSampleCounter = 0;
   }
 
-  const minDistance = 25; // Minimum distance traveled before taking a sample
+  const minDistance = 25 * scaleFactor; // Minimum distance traveled before taking a sample
 
   // Calculate distance from last sampled position
   if (charge.trail.length === 0 ||
@@ -133,7 +134,7 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
   trailGraphics.clear();
 
   // Option 1: Draw small dots along the trail
-  const dotRadius = 8;
+  const dotRadius = 8 * scaleFactor;
   trailGraphics.beginFill(0xffffff, 0.7);
   for (const pos of charge.trail) {
     trailGraphics.drawCircle(pos.x, pos.y, dotRadius);
@@ -352,6 +353,8 @@ const resize = () => {
 const updateChargesOnCanvas = (charges: Charge[]) => {
   if (!app) return;
 
+  const scaleFactor = window.innerWidth < 600 ? 0.6 : 1.0;
+
   // Remove graphics for charges that no longer exist
   for (const [id, graphic] of chargesGraphics) {
     if (!charges.find((charge) => charge.id === id)) {
@@ -401,7 +404,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     const polarity = charge.polarity === 'positive' ? "+" : "-";
 
     // Draw the charge circle
-    const radius = 24
+    const radius = 24 * scaleFactor;
     graphic.beginFill(color);
     // graphic.lineStyle(0);
     graphic.drawCircle(0, 0, radius);
@@ -416,7 +419,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       const labelText = `${polarity}${charge.magnitude}C`;
       text = new PIXI.Text(labelText, {
         fontFamily: settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins',
-        fontSize: 16,
+        fontSize: 16 * scaleFactor,
         fill: palette.value.chargeText,
         align: 'center',
       });
@@ -428,6 +431,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
     } else {
       text.text = polarity + charge.magnitude.toString() + 'C';
       text.style.fontFamily = settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins';
+      text.style.fontSize = 16 * scaleFactor;
     }
 
     text.anchor.set(0.5);
