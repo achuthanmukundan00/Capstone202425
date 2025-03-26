@@ -8,7 +8,15 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import * as PIXI from 'pixi.js';
 import type { Charge } from '@/stores/charges';
 import { AnimationMode, useChargesStore } from '@/stores/charges';
-import { drawElectricField, drawMagneticField, drawMagneticForcesOnAllCharges, drawElectricForceForCharge, drawVelocityOnAllCharges, removeFields } from '@/utils/drawingUtils';
+import {
+  drawElectricField,
+  drawMagneticField,
+  drawMagneticForcesOnAllCharges,
+  drawElectricForceForCharge,
+  drawVelocityOnAllCharges,
+  removeFields,
+  removeAllForceElements
+} from '@/utils/drawingUtils';
 import { calculateMagneticForce, calculateElectricForce, calculateElectricField } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING, FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH } from '@/consts';
 import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
@@ -50,13 +58,11 @@ function updateElectricForces() {
   // Use non-null assertion since we already checked app is not null
   const application = app!;
 
-  // Clear existing force vectors
-  application.stage.children
-    .filter(child =>
-      child.name === 'electricForceVector' ||
-      child.name?.startsWith('electricForceVector-from-')
-    )
-    .forEach(child => application.stage.removeChild(child));
+  // Remove all force elements and reset state
+  removeAllForceElements(application);
+
+  // Reset all force highlights to ensure clean state
+  resetAllPartialForceHighlights(application);
 
   // Calculate and draw new forces
   calculateElectricForce(chargesStore.charges);
@@ -243,7 +249,9 @@ onMounted(async () => {
 
   // Set up stage interactivity and pointer events
   app.stage.interactive = true;
+  app.stage.eventMode = 'static'; // PIXI v7 property
   app.stage.hitArea = app.screen;
+
   app.stage.on('pointermove', (event) => {
     chargesStore.charges.forEach((charge) => {
       const graphic = chargesGraphics.get(charge.id);
@@ -296,7 +304,10 @@ onMounted(async () => {
   });
 
   app.stage.on('pointerdown', (event) => {
+    // Only deselect if we clicked on the stage itself, not on a child
     if (event.target === app?.stage) {
+      // Reset highlights and deselect the charge
+      resetAllPartialForceHighlights(app!);
       chargesStore.setSelectedCharge(null);
     }
   });
@@ -360,13 +371,17 @@ onMounted(async () => {
     (newMode) => {
       if (!app) return;
 
+      // Clean up all force vectors and reset state
+      removeAllForceElements(app);
+
+      // Also reset all highlights to ensure clean state
+      resetAllPartialForceHighlights(app);
+
       // Clear all field and force vectors
       app.stage.children
         .filter(child =>
           child.name === 'fieldVector' ||
-          child.name === 'electricForceVector' ||
-          child.name?.startsWith('electricForceVector-from-') ||
-          child.name?.startsWith('magneticForceVector-') || 
+          child.name?.startsWith('magneticForceVector-') ||
           child.name.startsWith('velocityVector-')
         )
         .forEach(child => app!.stage.removeChild(child));
@@ -381,17 +396,6 @@ onMounted(async () => {
         }
       } else {
         removeFields(app!);
-
-        // Clean up any remaining electric-specific elements
-        app.stage.children
-          .filter(child =>
-            child.name === 'fieldVector' ||
-            child.name === 'electricForceVector' ||
-            child.name?.startsWith('electricForceVector-from-')
-          )
-          .forEach(child => app!.stage.removeChild(child));
-
-
         drawMagneticField(app!, chargesStore.magneticField);
         drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
         drawVelocityOnAllCharges(app!, chargesStore, palette.value);
@@ -450,6 +454,57 @@ const resize = () => {
   }
 };
 
+// Function to highlight partial forces from a specific charge
+function highlightPartialForces(app: PIXI.Application, sourceChargeId: string, isHighlighted: boolean) {
+  if (!app) return;
+
+  // Find all partial force vectors that originate from the hovered charge
+  const partialForceVectors = app.stage.children.filter(
+    child => child.name?.startsWith(`electricForceVector-from-${sourceChargeId}`)
+  );
+
+  // Set alpha to 1.0 when highlighted, 0.5 when not
+  const newAlpha = isHighlighted ? 1.0 : 0.5;
+
+  // Update the alpha of all partial force vectors from this charge
+  partialForceVectors.forEach(vector => {
+    if (vector instanceof PIXI.Graphics) {
+      vector.alpha = newAlpha;
+
+      // Also update associated labels
+      const labelName = `label-for-${vector.name}`;
+      const label = app.stage.children.find(child => child.name === labelName);
+      if (label) {
+        label.alpha = newAlpha;
+      }
+    }
+  });
+}
+
+// Function to reset all partial forces to non-highlighted state
+function resetAllPartialForceHighlights(app: PIXI.Application) {
+  if (!app) return;
+
+  // Find all partial force vectors
+  const partialForceVectors = app.stage.children.filter(
+    child => child.name?.startsWith('electricForceVector-from-')
+  );
+
+  // Set all to default alpha
+  partialForceVectors.forEach(vector => {
+    if (vector instanceof PIXI.Graphics) {
+      vector.alpha = 0.5;
+
+      // Also update associated labels
+      const labelName = `label-for-${vector.name}`;
+      const label = app.stage.children.find(child => child.name === labelName);
+      if (label) {
+        label.alpha = 0.5;
+      }
+    }
+  });
+}
+
 const updateChargesOnCanvas = (charges: Charge[]) => {
   if (!app) return;
 
@@ -473,21 +528,26 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       chargesGraphics.set(charge.id, graphic);
       app?.stage.addChild(graphic);
 
-      // Enable interactivity
-      graphic.interactive = true;
-      graphic.buttonMode = true;
+      // Configure interactivity for both PIXI v6 and v7 compatibility
+      graphic.eventMode = 'static'; // PIXI v7 property
+      graphic.cursor = 'pointer';    // PIXI v7 property
+      // For backwards compatibility with PIXI v6
+      graphic.interactive = true;    // PIXI v6 property
+      graphic.buttonMode = true;     // PIXI v6 property
 
-      // Event handlers for selection
-      graphic.on('pointerdown', () => {
+      // Event handlers for selection - separate from drag handling
+      graphic.on('pointerdown', (event) => {
+        // Stop propagation to prevent stage from deselecting
+        event.stopPropagation();
         chargesStore.setSelectedCharge(charge.id);
+
+        // Also store data for drag handling
+        graphic!.data = event.data;
+        graphic!.dragging = true;
       });
 
-      // Event handlers for dragging
+      // Drag handling events
       graphic
-        .on('pointerdown', (event) => {
-          graphic!.data = event.data;
-          graphic!.dragging = true;
-        })
         .on('pointerup', () => {
           graphic!.dragging = false;
           graphic!.data = null;
@@ -495,6 +555,22 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
         .on('pointerupoutside', () => {
           graphic!.dragging = false;
           graphic!.data = null;
+        });
+
+      // Add hover handlers for force highlighting
+      graphic
+        .on('pointerover', () => {
+          if (chargesStore.mode === 'electric' && chargesStore.showForces) {
+            // First reset all highlights to ensure clean state
+            resetAllPartialForceHighlights(app!);
+            // Then highlight this charge's forces
+            highlightPartialForces(app!, charge.id, true);
+          }
+        })
+        .on('pointerout', () => {
+          if (chargesStore.mode === 'electric' && chargesStore.showForces) {
+            highlightPartialForces(app!, charge.id, false);
+          }
         });
     } else {
       graphic.clear();
@@ -545,14 +621,11 @@ watch(
   (showForces) => {
     if (!app) return;
 
-    // Clear existing electric force vectors - more thorough cleanup
-    app!.stage.children
-      .filter(child =>
-        child.name === 'electricForceVector' ||
-        child.name.startsWith('electricForceVector-from-') ||
-        child.name?.startsWith('magneticForceVector-')
-      )
-      .forEach(child => app!.stage.removeChild(child));
+    // Clean up all force vectors and reset state
+    removeAllForceElements(app);
+
+    // Also ensure all highlights are reset
+    resetAllPartialForceHighlights(app);
 
     // Only redraw if in electric mode and showForces is true
     if (chargesStore.mode === 'electric' && showForces) {

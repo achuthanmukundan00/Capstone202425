@@ -24,6 +24,9 @@ const LOG_SCALE_FACTOR = 2
 const forceVectorPool: PIXI.Graphics[] = [];
 const MAX_POOL_SIZE = 100;
 
+// Map to store charge ID to simple label mapping (C1, C2, etc.)
+const chargeIdToLabel = new Map<string, string>();
+
 // Get a vector from the pool or create a new one
 function getVectorFromPool(): PIXI.Graphics {
   if (forceVectorPool.length > 0) {
@@ -148,17 +151,21 @@ export function drawElectricField(
   })
 }
 
-export function drawElectricForce(app: PIXI.Application, force: { direction: { x: number; y: number }; magnitude: number }, position: { x: number; y: number }, isTotal: boolean = false, sourceChargeId?: string) {
+export function drawElectricForce(app: PIXI.Application, force: { direction: { x: number; y: number }; magnitude: number }, position: { x: number; y: number }, isTotal: boolean = false, sourceChargeId?: string, alpha: number = 1.0) {
   // Use object pooling for better performance
   const arrow = getVectorFromPool();
   arrow.name = isTotal ? 'electricForceVector' : `electricForceVector-from-${sourceChargeId || 'unknown'}`;
   arrow.zIndex = 5; // Higher than field vectors but lower than charges
 
+  // Ensure arrow doesn't interfere with mouse events on charges
+  arrow.eventMode = 'none'; // PIXI v7
+  arrow.interactive = false; // PIXI v6
+
   // Use different colors and line styles for total vs partial forces
   const color = isTotal ? 0xff0000 : 0x00aaff; // Red for total, Blue for partial
   const lineWidth = isTotal ? 3 : 2; // Thicker line for total force
 
-  arrow.lineStyle(lineWidth, color, 1);
+  arrow.lineStyle(lineWidth, color, alpha);
 
   // Calculate the force vector endpoint
   // Increase the scale factor to make forces more visible
@@ -182,7 +189,7 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
   const arrowheadSize = isTotal ? ARROWHEAD_LENGTH * 1.2 : ARROWHEAD_LENGTH;
 
   // Create filled arrowhead
-  arrow.beginFill(color);
+  arrow.beginFill(color, alpha);
   arrow.moveTo(endX, endY);
   arrow.lineTo(
     endX - arrowheadSize * Math.cos(angle - Math.PI / 6),
@@ -194,6 +201,46 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
   );
   arrow.lineTo(endX, endY);
   arrow.endFill();
+
+  // If this is a partial force, add a small indicator of the source charge
+  if (!isTotal && sourceChargeId) {
+    // Position for the indicator (halfway along the force vector)
+    const indicatorX = position.x + (force.direction.x * arrowLength * 0.5);
+    const indicatorY = position.y + (force.direction.y * arrowLength * 0.5);
+
+    // Create a small dot indicator
+    const indicatorSize = 6;
+    arrow.beginFill(color, alpha);
+    arrow.drawCircle(indicatorX, indicatorY, indicatorSize);
+    arrow.endFill();
+
+    // Get or create a simple charge label (C1, C2, etc.)
+    let chargeLabel = chargeIdToLabel.get(sourceChargeId);
+    if (!chargeLabel) {
+      chargeLabel = `C${chargeIdToLabel.size + 1}`;
+      chargeIdToLabel.set(sourceChargeId, chargeLabel);
+    }
+
+    // Create a non-interactive label using our helper
+    const labelName = `label-for-${arrow.name}`;
+    const label = createNonInteractiveLabel(
+      chargeLabel,
+      {
+        fontSize: 10,
+        fill: color,
+        fontWeight: 'bold',
+        align: 'center'
+      },
+      labelName
+    );
+
+    label.alpha = alpha;
+    label.anchor.set(0.5);
+    label.position.set(indicatorX, indicatorY - 10);
+
+    // Add label to stage
+    app.stage.addChild(label);
+  }
 
   app.stage.addChild(arrow);
   return arrow;
@@ -218,9 +265,12 @@ export function drawElectricForceForCharge(app: PIXI.Application, charge: Charge
       // Limit the number of partial forces to draw for performance
       .slice(0, 5); // Only show top 5 most significant forces
 
+    // Draw partial forces with lower alpha by default (muted appearance)
+    const defaultPartialForceAlpha = 0.5;
+
     significantForces.forEach((partialForce) => {
       const sourceChargeId = partialForce.sourceChargeId || 'unknown';
-      drawElectricForce(app, partialForce, charge.position, false, sourceChargeId);
+      drawElectricForce(app, partialForce, charge.position, false, sourceChargeId, defaultPartialForceAlpha);
     });
   }
 
@@ -245,7 +295,7 @@ export function drawMagneticForce(
 
   const magneticForce = calculateMagneticForce(charge, magneticField)
   const scaledForce = normalizeAndScale(magneticForce, VECTOR_LENGTH_SCALE)
-  
+
   // Calculate the length and then adjust it by the scale factor.
   const length = Math.min(
     Math.sqrt(
@@ -263,7 +313,7 @@ export function drawMagneticForce(
   const arrow = new PIXI.Graphics()
   arrow.name = `magneticForceVector-${charge.id}`
   arrow.zIndex = 0
-  
+
   // Scale the line thickness by the scale factor.
   arrow.lineStyle(10 * scaleFactor, colorPalette.magneticForceVector, 1)
 
@@ -319,7 +369,7 @@ export function drawMagneticField(
     child.name === 'electricForceVector' ||
     child.name?.startsWith('electricForceVector-from-')
   );
-  
+
 // to check back here. Conflict resolution. I commented out this nect portion and replace with this clear and pool vector from above.
 //   app.stage.children
 //     .filter(child => child.name === 'magneticFieldSymbol')
@@ -407,10 +457,10 @@ export function drawVelocity(
   const arrow = new PIXI.Graphics()
   arrow.name = `velocityVector-${charge.id}`
   arrow.zIndex = 0
-  
+
   // Multiply line thickness by scaleFactor
   arrow.lineStyle(10 * scaleFactor, colorPalette.velocityVector, 1)
-  
+
   const startX = charge.position.x
   const startY = charge.position.y
   // Multiply the arrow's extension factor by scaleFactor
@@ -462,4 +512,44 @@ export function drawVelocityOnAllCharges(
   chargesStore.charges.forEach(charge => {
     drawVelocity(app!, charge, colorPalette)
   })
+}
+
+// Function to reset the charge label mapping
+export function resetChargeLabelMapping() {
+  chargeIdToLabel.clear();
+}
+
+// Helper function to create a non-interactive label
+export function createNonInteractiveLabel(
+  text: string,
+  options: PIXI.TextStyle | Partial<PIXI.TextStyle> | undefined,
+  name: string
+) {
+  const label = new PIXI.Text(text, options);
+  label.name = name;
+
+  // Ensure label doesn't interfere with mouse events
+  label.eventMode = 'none'; // PIXI v7
+  label.interactive = false; // PIXI v6
+
+  return label;
+}
+
+// Clear all force vectors and their labels
+export function removeAllForceElements(app: PIXI.Application) {
+  if (!app) return;
+
+  // Clean up all force vectors and their labels using pooling
+  clearAndPoolVectors(app, child =>
+    child.name === 'electricForceVector' ||
+    child.name?.startsWith('electricForceVector-from-')
+  );
+
+  // Remove all force-related labels (which aren't pooled)
+  app.stage.children
+    .filter(child => child.name?.startsWith('label-for-'))
+    .forEach(child => app.stage.removeChild(child));
+
+  // Reset the charge label mapping
+  resetChargeLabelMapping();
 }
