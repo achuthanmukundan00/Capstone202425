@@ -72,8 +72,8 @@ html, body {
 #app {
   display: flex;
   font-family: 'Poppins', sans-serif;
-  height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100dvw;
   overflow: hidden;
   position: relative;
 }
