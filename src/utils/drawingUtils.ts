@@ -565,7 +565,7 @@ export function removeAllForceElements(app: PIXI.Application) {
   clearAndPoolVectors(app, child => {
     const isForceVector = child.name === 'electricForceVector' ||
                          child.name?.startsWith('electricForceVector-from-');
-    if (isForceVector) vectorsRemoved++;
+    // if (isForceVector) vectorsRemoved++;
     return isForceVector;
   });
 
@@ -573,7 +573,7 @@ export function removeAllForceElements(app: PIXI.Application) {
   app.stage.children
     .filter(child => {
       const isLabel = child.name?.startsWith('label-for-');
-      if (isLabel) labelsRemoved++;
+      // if (isLabel) labelsRemoved++;
       return isLabel;
     })
     .forEach(child => app.stage.removeChild(child));
