@@ -82,8 +82,6 @@ export function drawElectricField(
     .forEach(child => app.stage.removeChild(child))
 
   if (charges.length === 0) return
-  // const chargesStore = useChargesStore()
-  // if (!chargesStore.showForces) return
 
   // Increase clusterFactor to draw fewer arrows.
   // For example, a factor of 2 draws one arrow per 2x2 block.
@@ -441,9 +439,6 @@ export function drawMagneticForcesOnAllCharges(
     child.name === 'electricForceVector' ||
     child.name?.startsWith('electricForceVector-from-')
   );
-
-  // If forces are hidden, don't draw new ones
-  if (!chargesStore.showForces) return
 
   // Draw forces for each charge
   chargesStore.charges.forEach(charge => {
