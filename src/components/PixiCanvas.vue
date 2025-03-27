@@ -1227,5 +1227,6 @@ function drawElectricFieldDuringDrag(app: PIXI.Application, charges: Charge[]) {
   font-family: monospace;
   border-radius: 4px;
   pointer-events: none;
+  z-index: 10;
 }
 </style>
