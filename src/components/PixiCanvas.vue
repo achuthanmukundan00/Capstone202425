@@ -12,13 +12,15 @@ import {
   drawElectricField,
   drawMagneticField,
   drawMagneticForcesOnAllCharges,
-  drawElectricForceForCharge,
   drawVelocityOnAllCharges,
   removeFields,
   removeAllForceElements,
-  resetChargeLabelMapping
+  resetChargeLabelMapping,
+  drawElectricForcesGrid,
+  drawElectricForcesGridDuringDrag,
+  highlightForcesFromCharge
 } from '@/utils/drawingUtils';
-import { calculateMagneticForce, calculateElectricForce, calculateElectricField } from '@/utils/mathUtils';
+import { calculateMagneticForce, calculateElectricField } from '@/utils/mathUtils';
 import { ANIMATION_SPEED, FORCE_SCALING, FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH } from '@/consts';
 import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
 import { useSettingsStore } from '@/stores/settings'
@@ -31,40 +33,41 @@ const forceOperations = new Map<string, {
   updates: Array<{timestamp: number, operation: string, alpha?: number}>
 }>();
 
-function logForceOperation(vectorId: string, operation: string, details: Record<string, unknown> = {}) {
-  if (!DEBUG_FORCES) return;
+// Only used when DEBUG_FORCES is true
+// function logForceOperation(vectorId: string, operation: string, details: Record<string, unknown> = {}) {
+//   if (!DEBUG_FORCES) return;
 
-  const now = Date.now();
-  const timestamp = performance.now().toFixed(2);
+//   const now = Date.now();
+//   const timestamp = performance.now().toFixed(2);
 
-  if (!forceOperations.has(vectorId)) {
-    forceOperations.set(vectorId, {
-      createdAt: now,
-      updates: []
-    });
-    console.log(`[${timestamp}] Force vector ${vectorId}: ${operation}`, details);
-  } else {
-    const entry = forceOperations.get(vectorId)!;
-    entry.updates.push({
-      timestamp: now,
-      operation,
-      ...details
-    });
+//   if (!forceOperations.has(vectorId)) {
+//     forceOperations.set(vectorId, {
+//       createdAt: now,
+//       updates: []
+//     });
+//     console.log(`[${timestamp}] Force vector ${vectorId}: ${operation}`, details);
+//   } else {
+//     const entry = forceOperations.get(vectorId)!;
+//     entry.updates.push({
+//       timestamp: now,
+//       operation,
+//       ...details
+//     });
 
-    // Log if we're seeing rapid updates within a short time window
-    const recentUpdates = entry.updates.filter(u => now - u.timestamp < 100).length;
-    if (recentUpdates > 2) {
-      console.warn(`[${timestamp}] Force vector ${vectorId}: ${operation} - ${recentUpdates} updates in last 100ms!`, details);
-    } else {
-      console.log(`[${timestamp}] Force vector ${vectorId}: ${operation}`, details);
-    }
+//     // Log if we're seeing rapid updates within a short time window
+//     const recentUpdates = entry.updates.filter(u => now - u.timestamp < 100).length;
+//     if (recentUpdates > 2) {
+//       console.warn(`[${timestamp}] Force vector ${vectorId}: ${operation} - ${recentUpdates} updates in last 100ms!`, details);
+//     } else {
+//       console.log(`[${timestamp}] Force vector ${vectorId}: ${operation}`, details);
+//     }
 
-    // Keep only recent history to avoid memory bloat
-    if (entry.updates.length > 20) {
-      entry.updates = entry.updates.slice(-10);
-    }
-  }
-}
+//     // Keep only recent history to avoid memory bloat
+//     if (entry.updates.length > 20) {
+//       entry.updates = entry.updates.slice(-10);
+//     }
+//   }
+// }
 
 function clearForceOperationLogs() {
   if (!DEBUG_FORCES) return;
@@ -116,6 +119,14 @@ let isUpdatingForces = false; // Flag to prevent simultaneous force calculations
 
 const MOVEMENT_STEP = 10; // pixels per keypress
 
+// Additional flags to stabilize force rendering
+let lastForceRenderState = {
+  charges: [] as Charge[],
+  timestamp: 0
+};
+
+const FORCE_STABILITY_THRESHOLD = 500; // ms - minimum time between force updates when nothing is changing
+
 // Function to detect if charges are very close to each other (causes potential instability)
 function detectChargeProximity() {
   if (!DEBUG_FORCES || !chargesStore.showForces) return;
@@ -152,13 +163,42 @@ function detectChargeProximity() {
 
 // Function to actually update the forces
 function updateElectricForcesImpl() {
-  if (!app || isUpdatingForces) return;
+  if (!app || isUpdatingForces || !chargesStore.showForces) return;
+
+  // First check if we really need to update
+  const now = performance.now();
+  const timeSinceLastUpdate = now - lastForceRenderState.timestamp;
+
+  // If it's been less than our stability threshold, and we have the same number of charges,
+  // we'll skip this update unless we're dragging or have an explicit force update request
+  if (timeSinceLastUpdate < FORCE_STABILITY_THRESHOLD &&
+      chargesStore.charges.length === lastForceRenderState.charges.length &&
+      !isDragging && !needsForceUpdate) {
+
+    // Check if any charge positions have changed significantly
+    const positionsChanged = chargesStore.charges.some((charge, index) => {
+      const lastCharge = lastForceRenderState.charges[index];
+      if (!lastCharge) return true;
+
+      // Check if position has changed by more than 1 pixel
+      const dx = Math.abs(charge.position.x - lastCharge.position.x);
+      const dy = Math.abs(charge.position.y - lastCharge.position.y);
+      return dx > 1 || dy > 1 || charge.id !== lastCharge.id;
+    });
+
+    if (!positionsChanged) {
+      if (DEBUG_FORCES) {
+        console.log(`[${now.toFixed(2)}] Skipping force update, no changes detected and only ${timeSinceLastUpdate.toFixed(0)}ms since last update`);
+      }
+      return;
+    }
+  }
 
   // Check for charges that are too close (potential instability)
   detectChargeProximity();
 
   if (DEBUG_FORCES) {
-    console.log(`[${performance.now().toFixed(2)}] Starting force update, charges: ${chargesStore.charges.length}, isHovering: ${isHoveringCharge}`);
+    console.log(`[${now.toFixed(2)}] Starting force update, charges: ${chargesStore.charges.length}`);
   }
 
   // Set the flag to prevent simultaneous updates
@@ -168,74 +208,14 @@ function updateElectricForcesImpl() {
     // Use non-null assertion since we already checked app is not null
     const application = app!;
 
-    // Record what we're doing
-    clearForceOperationLogs();
-    if (DEBUG_FORCES) {
-      console.log(`[${performance.now().toFixed(2)}] Removing all force elements`);
-    }
+    // Use our new grid-based force drawing approach
+    drawElectricForcesGrid(application, chargesStore.charges);
 
-    // Store current highlighted state if hovering
-    const wasHighlighted = isHoveringCharge;
-    const hoveredChargeId = currentHoveredChargeId;
-
-    // Remove all force elements and reset state
-    // This will also reset chargeIdToLabel mapping
-    removeAllForceElements(application);
-
-    // Calculate the forces but don't modify charges directly
-    if (DEBUG_FORCES) {
-      console.log(`[${performance.now().toFixed(2)}] Calculating forces`);
-    }
-    const forceResults = calculateElectricForce(chargesStore.charges);
-
-    // If no forces were calculated (e.g., only one charge), exit
-    if (!forceResults) {
-      needsForceUpdate = false;
-      if (DEBUG_FORCES) {
-        console.log(`[${performance.now().toFixed(2)}] No forces to draw`);
-      }
-      return;
-    }
-
-    // Apply the calculated forces to the charges in a non-recursive way
-    // Create a copy of the charges array to avoid reactivity during updates
-    const charges = [...chargesStore.charges];
-
-    if (DEBUG_FORCES) {
-      console.log(`[${performance.now().toFixed(2)}] Drawing forces for ${charges.length} charges`);
-    }
-
-    charges.forEach(charge => {
-      const forceData = forceResults.get(charge.id);
-      if (!forceData) return;
-
-      // Update the charge's electricForce in a single non-reactive operation
-      charge.electricForce = {
-        partialForces: forceData.partialForces,
-        totalForce: forceData.totalForce
-      };
-
-      // Draw the forces for this charge
-      const vectorsDrawn = drawElectricForceForCharge(application, charge);
-
-      if (DEBUG_FORCES) {
-        console.log(`[${performance.now().toFixed(2)}] Drew ${vectorsDrawn.total} forces for charge ${charge.id} (${vectorsDrawn.partial} partial, ${vectorsDrawn.total > 0 ? 1 : 0} total)`);
-      }
-    });
-
-    // Re-highlight the previously highlighted charge if needed
-    if (wasHighlighted && hoveredChargeId) {
-      // Use our debounced highlight function instead
-      debouncedHighlight(application, hoveredChargeId, true);
-
-      if (DEBUG_FORCES) {
-        console.log(`[${performance.now().toFixed(2)}] Re-highlighted forces for charge ${hoveredChargeId} after update`);
-      }
-    }
-
-    if (DEBUG_FORCES) {
-      console.log(`[${performance.now().toFixed(2)}] Force update complete, hover state restored: ${wasHighlighted}`);
-    }
+    // Update our last render state with a deep copy of the charges
+    lastForceRenderState = {
+      charges: JSON.parse(JSON.stringify(chargesStore.charges)),
+      timestamp: now
+    };
 
     needsForceUpdate = false;
   } finally {
@@ -285,30 +265,8 @@ function highlightPartialForces(app: PIXI.Application, sourceChargeId: string, i
     console.log(`[${performance.now().toFixed(2)}] Highlighting forces for charge ${sourceChargeId}, highlight=${isHighlighted}`);
   }
 
-  // Find all partial force vectors that originate from the hovered charge
-  const partialForceVectors = app.stage.children.filter(
-    child => child.name?.startsWith(`electricForceVector-from-${sourceChargeId}`)
-  );
-
-  // Set alpha to 1.0 when highlighted, 0.5 when not
-  const newAlpha = isHighlighted ? 1.0 : 0.5;
-
-  // Update the alpha of all partial force vectors from this charge
-  partialForceVectors.forEach(vector => {
-    if (vector instanceof PIXI.Graphics) {
-      const vectorId = vector.name || 'unknown';
-      logForceOperation(vectorId, 'highlight-change', { alpha: newAlpha, sourceChargeId });
-
-      vector.alpha = newAlpha;
-
-      // Also update associated labels
-      const labelName = `label-for-${vector.name}`;
-      const label = app.stage.children.find(child => child.name === labelName);
-      if (label) {
-        label.alpha = newAlpha;
-      }
-    }
-  });
+  // Use the new grid-based approach for highlighting
+  highlightForcesFromCharge(app, sourceChargeId, isHighlighted);
 }
 
 function handleMouseMove(event: MouseEvent) {
@@ -580,8 +538,8 @@ onMounted(async () => {
               if (DEBUG_FORCES) {
                 console.log(`[${performance.now().toFixed(2)}] Updating forces during drag`);
               }
-              // Directly call the implementation to avoid debouncing
-              updateElectricForcesImpl();
+              // Use the optimized grid-based approach during drag for better performance
+              drawElectricForcesGridDuringDrag(app!, chargesStore.charges);
             }
             lastForceUpdateTime = now;
           } else {
@@ -632,8 +590,8 @@ onMounted(async () => {
             if (DEBUG_FORCES) {
               console.log(`[${performance.now().toFixed(2)}] End of drag, updating forces`);
             }
-            // Call implementation directly for immediate update
-            updateElectricForcesImpl();
+            // Use grid-based approach for consistent force rendering at the end of drag
+            drawElectricForcesGrid(app!, chargesStore.charges);
           }
         } finally {
           isUpdatingForces = false;
@@ -704,11 +662,21 @@ onMounted(async () => {
             drawElectricField(app!, newCharges, palette.value);
 
             if (chargesStore.showForces && newCharges.length > 1) {
-              // Instead of directly updating forces here, schedule a debounced update
-              if (DEBUG_FORCES) {
-                console.log(`[${performance.now().toFixed(2)}] Scheduling debounced force update due to charges change`);
+              // Check if a significant change happened that requires force update
+              const now = performance.now();
+              const timeSinceLastUpdate = now - lastForceRenderState.timestamp;
+              const forceStabilityActive = timeSinceLastUpdate < FORCE_STABILITY_THRESHOLD &&
+                                           newCharges.length === lastForceRenderState.charges.length;
+
+              if (!forceStabilityActive || needsForceUpdate) {
+                // Instead of directly updating forces here, schedule a debounced update
+                if (DEBUG_FORCES) {
+                  console.log(`[${performance.now().toFixed(2)}] Scheduling debounced force update due to charges change`);
+                }
+                updateElectricForces();
+              } else if (DEBUG_FORCES) {
+                console.log(`[${performance.now().toFixed(2)}] Skipping force update due to stability threshold`);
               }
-              updateElectricForces();
             }
           } else {
             drawMagneticField(app!, chargesStore.magneticField);
@@ -737,6 +705,12 @@ onMounted(async () => {
 
       // Also reset all highlights to ensure clean state
       resetAllPartialForceHighlights(app);
+
+      // Reset force stability tracking
+      lastForceRenderState = {
+        charges: [],
+        timestamp: 0
+      };
 
       // Clear all field and force vectors
       app.stage.children
@@ -838,17 +812,14 @@ function resetAllPartialForceHighlights(app: PIXI.Application) {
   isHoveringCharge = false;
   currentHoveredChargeId = null;
 
-  // Find all partial force vectors
+  // Set all partial force vectors to default alpha of 0.5
   const partialForceVectors = app.stage.children.filter(
     child => child.name?.startsWith('electricForceVector-from-')
   );
 
-  // Set all to default alpha, using direct updates (not debounced)
+  // Apply uniform alpha to all partial forces
   partialForceVectors.forEach(vector => {
     if (vector instanceof PIXI.Graphics) {
-      const vectorId = vector.name || 'unknown';
-      logForceOperation(vectorId, 'reset-highlight', { alpha: 0.5 });
-
       vector.alpha = 0.5;
 
       // Also update associated labels
@@ -1050,6 +1021,12 @@ watch(
       // Reset charge label mapping when forces are toggled
       resetChargeLabelMapping();
 
+      // Always reset force state when toggling
+      lastForceRenderState = {
+        charges: [],
+        timestamp: 0
+      };
+
       if (DEBUG_FORCES) {
         console.log(`[${performance.now().toFixed(2)}] Removing all force elements due to toggle`);
       }
@@ -1062,58 +1039,24 @@ watch(
       if (chargesStore.mode === 'electric' && showForces) {
         console.log("Showing electric forces, charge count:", chargesStore.charges.length);
 
-        // Calculate forces without directly modifying charges
-        if (DEBUG_FORCES) {
-          console.log(`[${performance.now().toFixed(2)}] Calculating forces due to toggle`);
-        }
-        const forceResults = calculateElectricForce(chargesStore.charges);
-
-        // If no forces calculated (e.g., only one charge), exit early
-        if (!forceResults) {
+        if (chargesStore.charges.length > 1) {
+          // Use our new grid-based approach to draw all forces at once
           if (DEBUG_FORCES) {
-            console.log(`[${performance.now().toFixed(2)}] No forces to draw after toggle`);
+            console.log(`[${performance.now().toFixed(2)}] Drawing forces using grid-based approach after toggle`);
           }
-          return;
-        }
 
-        // Create a non-reactive copy to work with
-        const charges = [...chargesStore.charges];
+          // Force immediate update with the most recent charges
+          drawElectricForcesGrid(app!, chargesStore.charges);
 
-        if (DEBUG_FORCES) {
-          console.log(`[${performance.now().toFixed(2)}] Drawing forces for ${charges.length} charges after toggle`);
-        }
-
-        // Log more detailed info about the forces and apply calculated forces
-        charges.forEach(charge => {
-          const forceData = forceResults.get(charge.id);
-          if (!forceData) return;
-
-          // Update the charge's electricForce in a single operation
-          charge.electricForce = {
-            partialForces: forceData.partialForces,
-            totalForce: forceData.totalForce
+          // Store the current state to prevent unnecessary updates
+          lastForceRenderState = {
+            charges: JSON.parse(JSON.stringify(chargesStore.charges)),
+            timestamp: performance.now()
           };
-
-          console.log(`Charge ${charge.id} (${charge.polarity}, ${charge.magnitude}C):`);
-          console.log(`- Total force: magnitude = ${charge.electricForce.totalForce.magnitude.toExponential(4)}, direction = (${charge.electricForce.totalForce.direction.x.toFixed(2)}, ${charge.electricForce.totalForce.direction.y.toFixed(2)})`);
-
-          if (charge.electricForce.partialForces) {
-            console.log(`- Partial forces (${charge.electricForce.partialForces.length}):`);
-            charge.electricForce.partialForces.forEach(pf => {
-              const sourceId = pf.sourceChargeId || 'unknown';
-              console.log(`  - From charge ${sourceId}: magnitude = ${pf.magnitude.toExponential(4)}, direction = (${pf.direction.x.toFixed(2)}, ${pf.direction.y.toFixed(2)})`);
-            });
-          }
-
-          const vectorsDrawn = drawElectricForceForCharge(app!, charge);
-
+        } else {
           if (DEBUG_FORCES) {
-            console.log(`[${performance.now().toFixed(2)}] Drew ${vectorsDrawn.total} forces for charge ${charge.id} after toggle (${vectorsDrawn.partial} partial, ${vectorsDrawn.total > 0 ? 1 : 0} total)`);
+            console.log(`[${performance.now().toFixed(2)}] No forces to draw after toggle (less than 2 charges)`);
           }
-        });
-
-        if (DEBUG_FORCES) {
-          console.log(`[${performance.now().toFixed(2)}] Force drawing complete after toggle`);
         }
       } else if (chargesStore.mode === 'magnetic' && showForces) {
         console.log("Showing magnetic forces, charge count:", chargesStore.charges.length);

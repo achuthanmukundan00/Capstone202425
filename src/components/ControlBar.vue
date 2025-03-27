@@ -47,6 +47,10 @@
         </button>
       </div>
 
+      <div v-if="selectedChargeExists" class="edit-mode-indicator">
+        Changes are applied in real-time
+      </div>
+
       <RangeSlider v-model="chargeValueNum" :min="CHARGE_MAGNITUDE_BOUNDS.MIN" :max="CHARGE_MAGNITUDE_BOUNDS.MAX"
         :step="CHARGE_MAGNITUDE_BOUNDS.STEP" label="Charge Magnitude" unit="C" :precision="1" />
 
@@ -144,12 +148,6 @@
         <button class="action-button add-button" :disabled="!isValid || selectedChargeExists"
           :class="{ 'active': !selectedChargeExists }" @click="handleAddCharge">
           Add Charge
-        </button>
-
-        <!-- Edit Button -->
-        <button class="action-button edit-button" :disabled="!isValid || !selectedChargeExists"
-          @click="handleEditCharge">
-          Edit Charge
         </button>
 
         <!-- Delete Button -->
@@ -327,6 +325,18 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
   console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
 });
 
+// Watch for changes in polarity to automatically update the selected charge
+watch(polarity, (newPolarity) => {
+  if (!chargesStore.selectedChargeId) return;
+
+  chargesStore.updateCharge({
+    id: chargesStore.selectedChargeId,
+    polarity: newPolarity
+  });
+
+  console.log(`Updated charge ${chargesStore.selectedChargeId} polarity to ${newPolarity}`);
+});
+
 // Convert string values to numbers for the sliders
 const chargeValueNum = computed({
   get: () => Number(chargeValue.value),
@@ -336,9 +346,9 @@ const chargeValueNum = computed({
     if (chargesStore.selectedChargeId) {
       chargesStore.updateCharge({
         id: chargesStore.selectedChargeId,
-        magnitude: val,
-        polarity: polarity.value
+        magnitude: val
       });
+      console.log(`Updated charge ${chargesStore.selectedChargeId} magnitude to ${val}`);
     }
   }
 });
@@ -387,30 +397,6 @@ const handleAddCharge = () => {
     }
   });
 
-  resetForm();
-};
-
-const handleEditCharge = () => {
-  if (!isValid.value || !selectedChargeExists.value) return;
-
-  const dirX = Number(velocityDirectionX.value);
-  const dirY = Number(velocityDirectionY.value);
-  const length = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
-
-  chargesStore.updateCharge({
-    id: chargesStore.selectedChargeId!,
-    magnitude: Number(chargeValue.value),
-    polarity: polarity.value,
-    velocity: {
-      magnitude: Number(velocityMagnitude.value),
-      direction: {
-        x: dirX / length,
-        y: dirY / length
-      }
-    }
-  });
-
-  chargesStore.setSelectedCharge(null);
   resetForm();
 };
 
@@ -743,6 +729,17 @@ const toggleForceVisibility = () => {
 .close-button:hover {
   background: #e0e0e0;
   color: #333;
+}
+
+.edit-mode-indicator {
+  font-size: 0.8em;
+  font-style: italic;
+  color: #2980b9;
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 4px 8px;
+  background-color: rgba(41, 128, 185, 0.1);
+  border-radius: 4px;
 }
 
 /* Protanopia friendly mode */
