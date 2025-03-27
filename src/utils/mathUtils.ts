@@ -210,16 +210,16 @@ export function calculateMagneticForce(
 ): { x: number; y: number; z: number } {
   // Cross product: v x B
   const crossProduct = {
-    x:
-      charge.velocity.magnitude * charge.velocity.direction.y * magneticField.z,
-    y: (-1) * charge.velocity.magnitude * charge.velocity.direction.x * magneticField.z * (charge.polarity === 'positive' ? 1 : -1),
-    z: charge.velocity.magnitude * charge.velocity.direction.x * magneticField.y - charge.velocity.magnitude * charge.velocity.direction.y * magneticField.x,
-  }
+    x: charge.velocity.magnitude * (charge.velocity.direction.y * magneticField.z),
+    y: charge.velocity.magnitude * (-charge.velocity.direction.x * magneticField.z),
+    z: charge.velocity.magnitude * (charge.velocity.direction.x * magneticField.y - charge.velocity.direction.y * magneticField.x),
+  };
+
   // Scale by charge magnitude
   return {
-    x: charge.magnitude * crossProduct.x,
-    y: charge.magnitude * crossProduct.y,
-    z: charge.magnitude * crossProduct.z,
+    x:  (charge.polarity === 'positive' ? 1 : -1) * charge.magnitude * crossProduct.x,
+    y: (charge.polarity === 'positive' ? 1 : -1) * charge.magnitude * crossProduct.y,
+    z: (charge.polarity === 'positive' ? 1 : -1) * charge.magnitude * crossProduct.z,
   }
 }
 
