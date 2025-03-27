@@ -54,6 +54,19 @@
       <RangeSlider v-model="chargeValueNum" :min="CHARGE_MAGNITUDE_BOUNDS.MIN" :max="CHARGE_MAGNITUDE_BOUNDS.MAX"
         :step="CHARGE_MAGNITUDE_BOUNDS.STEP" label="Charge Magnitude" unit="C" :precision="1" />
 
+      <div class="form-group">
+        <label>Polarity:</label>
+        <div class="polarity-controls">
+          <label>
+            <input type="radio" v-model="polarity" value="positive" />
+            Positive (+)
+          </label>
+          <label>
+            <input type="radio" v-model="polarity" value="negative" />
+            Negative (-)
+          </label>
+        </div>
+      </div>
       <!-- <template v-if="mode === 'electric'">
         <div class="form-group">
           <button @click="toggleForceVisibility" class="action-button force-toggle">
@@ -63,40 +76,14 @@
       </template> -->
 
       <template v-if="mode === 'magnetic'">
-        <RangeSlider v-model="magneticFieldValueNum" :min="MAGNETIC_FIELD_BOUNDS.MIN" :max="MAGNETIC_FIELD_BOUNDS.MAX"
-          :step="MAGNETIC_FIELD_BOUNDS.STEP" label="Magnetic Field Strength" unit="T" :precision="1" />
+
 
         <RangeSlider v-model="velocityMagnitudeNum" :min="VELOCITY_BOUNDS.MIN" :max="VELOCITY_BOUNDS.MAX"
           :step="VELOCITY_BOUNDS.STEP" label="Velocity" unit="m/s" :precision="0" />
 
-        <div class="button-group">
-          <button class="action-button start-button" :class="{ active: animationMode === AnimationMode.start }"
-            @click="startAnimation"
-            :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)">
-            Start Animation
-          </button>
-
-          <button class="action-button stop-button" :class="{ active: animationMode === AnimationMode.stop }"
-            @click="stopAnimation" :disabled="animationMode !== AnimationMode.start">
-            Stop Animation
-          </button>
-
-          <button class="action-button reset-button" :class="{ active: animationMode === AnimationMode.reset }"
-            @click="resetAnimation" :disabled="animationMode !== AnimationMode.stop">
-            Reset Animation
-          </button>
-        </div>
         <div class="form-group">
-          <label>Velocity:</label>
-          <div class="velocity-inputs">
-            <div class="velocity-input">
-              <label>Magnitude:</label>
-              <input type="number" v-model="velocityMagnitude" min="0" step="0.1" class="input-field"
-                placeholder="Speed" @focus="checkChargeSelected" />
-            </div>
-          </div>
           <div class="velocity-direction">
-            <label>Direction:</label>
+            <label>Velocity Direction:</label>
             <div class="direction-inputs">
               <div class="direction-input">
                 <label>X:</label>
@@ -115,33 +102,34 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="magField">Uniform Magnetic Field (T):</label>
-          <input type="number" id="magField" v-model="magneticFieldValueNum" step="0.1" class="input-field"
-            placeholder="e.g. 1.0 (Tesla)" />
-        </div>
-
+        <RangeSlider v-model="magneticFieldValueNum" :min="MAGNETIC_FIELD_BOUNDS.MIN" :max="MAGNETIC_FIELD_BOUNDS.MAX"
+          :step="MAGNETIC_FIELD_BOUNDS.STEP" label="Magnetic Field Strength" unit="T" :precision="1" />
         <div class="form-group">
           <label>Magnetic Field Direction:</label>
           <button @click="toggleMagneticFieldDirection" class="direction-toggle">
             {{ magneticFieldDirection === 'out' ? '⬆ Out of Page' : '⬇ Into Page' }}
           </button>
         </div>
+        <div class="button-group">
+          <button class="action-button start-button" :class="{ active: animationMode === AnimationMode.start }"
+            @click="startAnimation"
+            :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)">
+            Start Animation
+          </button>
+
+          <button class="action-button stop-button" :class="{ active: animationMode === AnimationMode.stop }"
+            @click="stopAnimation" :disabled="animationMode !== AnimationMode.start">
+            Stop Animation
+          </button>
+
+          <button class="action-button reset-button" :class="{ active: animationMode === AnimationMode.reset }"
+            @click="resetAnimation" :disabled="animationMode !== AnimationMode.stop">
+            Reset Animation
+          </button>
+        </div>
       </template>
 
-      <div class="form-group">
-        <label>Polarity:</label>
-        <div class="polarity-controls">
-          <label>
-            <input type="radio" v-model="polarity" value="positive" />
-            Positive (+)
-          </label>
-          <label>
-            <input type="radio" v-model="polarity" value="negative" />
-            Negative (-)
-          </label>
-        </div>
-      </div>
+
 
       <div class="button-group">
         <!-- Add Button -->
@@ -185,7 +173,8 @@
             <span>Dyslexia-Friendly Font</span>
 
             <label class="toggle-switch">
-              <input class="switch-input" type="checkbox" :checked="settingsStore.dyslexiaMode" @change="toggleDyslexiaFont" />
+              <input class="switch-input" type="checkbox" :checked="settingsStore.dyslexiaMode"
+                @change="toggleDyslexiaFont" />
               <span class="switch-slider"></span>
             </label>
           </div>
@@ -346,10 +335,10 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
         },
       },
       rawDirection: {
-      x: dirX, // Preserve raw user input
-      y: dirY, // Preserve raw user input
-    },
-  });
+        x: dirX, // Preserve raw user input
+        y: dirY, // Preserve raw user input
+      },
+    });
 
     // console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
   }
@@ -493,14 +482,14 @@ const settingsStore = useSettingsStore()
 const colorblindModes = ['default', 'protanopia', 'deuteranopia', 'tritanopia'] as const;
 // Toggle function cycles through the modes
 //const toggleColorblindMode = () => {
-  //const currentIndex = colorblindModes.value.indexOf(selectedColorblindMode.value);
-  //const nextIndex = (currentIndex + 1) % colorblindModes.value.length;
-  //selectedColorblindMode.value = colorblindModes.value[nextIndex];
+//const currentIndex = colorblindModes.value.indexOf(selectedColorblindMode.value);
+//const nextIndex = (currentIndex + 1) % colorblindModes.value.length;
+//selectedColorblindMode.value = colorblindModes.value[nextIndex];
 
-  // Update the document body (or a wrapper element) with the new mode's class.
-  // This will allow CSS rules to apply different color schemes.
-  //document.body.classList.remove(...colorblindModes.value);
-  //document.body.classList.add(selectedColorblindMode.value);
+// Update the document body (or a wrapper element) with the new mode's class.
+// This will allow CSS rules to apply different color schemes.
+//document.body.classList.remove(...colorblindModes.value);
+//document.body.classList.add(selectedColorblindMode.value);
 //};
 
 // Add the toggle function
@@ -526,7 +515,8 @@ const toggleForceVisibility = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap; /* Allow items to wrap instead of overflowing */
+  flex-wrap: wrap;
+  /* Allow items to wrap instead of overflowing */
   margin-bottom: 20px;
   gap: 12px;
 }
@@ -935,11 +925,11 @@ body.tritanopia .controls-container {
   transition: transform 0.2s;
 }
 
-.switch-input:checked + .switch-slider {
+.switch-input:checked+.switch-slider {
   background-color: #4CAF50;
 }
 
-.switch-input:checked + .switch-slider::before {
+.switch-input:checked+.switch-slider::before {
   transform: translateX(18px);
 }
 
@@ -1031,11 +1021,15 @@ body.dark-mode .delete-button:hover:not(:disabled) {
   .controls-container {
     width: 100%;
     min-width: unset;
-    padding: 10px 15px 10px 10px; /* extra right padding */
+    padding: 10px 15px 10px 10px;
+    /* extra right padding */
     max-height: 100vh;
-    overflow-y: auto; /* Vertical scroll if needed */
-    overflow-x: auto; /* Allow horizontal scroll if absolutely necessary */
-    box-sizing: border-box; /* Ensure padding is included in the width */
+    overflow-y: auto;
+    /* Vertical scroll if needed */
+    overflow-x: auto;
+    /* Allow horizontal scroll if absolutely necessary */
+    box-sizing: border-box;
+    /* Ensure padding is included in the width */
   }
 
   .header-bar {
@@ -1073,6 +1067,4 @@ body.dark-mode .delete-button:hover:not(:disabled) {
     overflow-wrap: break-word;
   }
 }
-
-
 </style>

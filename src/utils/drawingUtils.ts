@@ -557,9 +557,9 @@ export function removeAllForceElements(app: PIXI.Application) {
   if (!app) return;
 
   // Debug: count how many elements we're removing
-  const debugStart = performance.now();
-  let vectorsRemoved = 0;
-  let labelsRemoved = 0;
+  // const debugStart = performance.now();
+  // let vectorsRemoved = 0;
+  // let labelsRemoved = 0;
 
   // Clean up all force vectors and their labels using pooling
   clearAndPoolVectors(app, child => {
