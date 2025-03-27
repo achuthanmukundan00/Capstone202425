@@ -62,9 +62,11 @@ html {
 }
 
 html, body {
-  overflow: hidden;
+  overflow-x: hidden;   /* Prevent horizontal scrolling */
+  overflow-y: auto;     /* Allow vertical scrolling */
   height: 100%;
   margin: 0;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 #app {
