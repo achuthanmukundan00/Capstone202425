@@ -159,8 +159,8 @@ export function drawElectricField(
 
 export function drawElectricForce(app: PIXI.Application, force: { direction: { x: number; y: number }; magnitude: number }, position: { x: number; y: number }, isTotal: boolean = false, sourceChargeId?: string, alpha: number = 1.0) {
   // Debug logging
-  const debugStart = performance.now();
-  const vectorType = isTotal ? "total" : "partial";
+  // const debugStart = performance.now();
+  // const vectorType = isTotal ? "total" : "partial";
   const vectorId = isTotal ? 'electricForceVector' : `electricForceVector-from-${sourceChargeId || 'unknown'}`;
 
   // Use object pooling for better performance
@@ -256,7 +256,7 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
   app.stage.addChild(arrow);
 
   // Log the drawing operation
-  console.log(`[${performance.now().toFixed(2)}] Drew ${vectorType} force vector ${vectorId}, magnitude=${force.magnitude.toExponential(4)}, alpha=${alpha}, took ${(performance.now() - debugStart).toFixed(2)}ms`);
+  // console.log(`[${performance.now().toFixed(2)}] Drew ${vectorType} force vector ${vectorId}, magnitude=${force.magnitude.toExponential(4)}, alpha=${alpha}, took ${(performance.now() - debugStart).toFixed(2)}ms`);
 
   return arrow;
 }
@@ -587,9 +587,9 @@ export function removeAllForceElements(app: PIXI.Application) {
   resetChargeLabelMapping();
 
   // Debug: log removal stats if we had any significant removal
-  if (vectorsRemoved > 0 || labelsRemoved > 0) {
-    console.log(`[${performance.now().toFixed(2)}] Removed ${vectorsRemoved} force vectors and ${labelsRemoved} labels in ${(performance.now() - debugStart).toFixed(2)}ms`);
-  }
+  // if (vectorsRemoved > 0 || labelsRemoved > 0) {
+  //   console.log(`[${performance.now().toFixed(2)}] Removed ${vectorsRemoved} force vectors and ${labelsRemoved} labels in ${(performance.now() - debugStart).toFixed(2)}ms`);
+  // }
 }
 
 // Constants for force drawing
@@ -600,7 +600,7 @@ const MAX_FORCE_ARROWS = 5; // Maximum number of partial force arrows to draw pe
 // New grid-based force drawing function
 export function drawElectricForcesGrid(app: PIXI.Application, charges: Charge[]) {
   // Performance measurement
-  const debugStart = performance.now();
+  // const debugStart = performance.now();
 
   // Clear existing force vectors and labels
   removeAllForceElements(app);
@@ -609,19 +609,19 @@ export function drawElectricForcesGrid(app: PIXI.Application, charges: Charge[])
   resetChargeLabelMapping();
 
   if (charges.length <= 1) {
-    console.log(`[${performance.now().toFixed(2)}] No forces to draw (${charges.length} charges)`);
+    // console.log(`[${performance.now().toFixed(2)}] No forces to draw (${charges.length} charges)`);
     return;
   }
 
   // Calculate all forces first (similar to field calculation)
   const forceResults = calculateElectricForce(charges);
   if (!forceResults) {
-    console.log(`[${performance.now().toFixed(2)}] No force results calculated`);
+    // console.log(`[${performance.now().toFixed(2)}] No force results calculated`);
     return;
   }
 
-  let totalForcesDrawn = 0;
-  let partialForcesDrawn = 0;
+  // let totalForcesDrawn = 0;
+  // let partialForcesDrawn = 0;
 
   // Draw forces for each charge
   charges.forEach(charge => {
@@ -643,7 +643,7 @@ export function drawElectricForcesGrid(app: PIXI.Application, charges: Charge[])
         true, // isTotal
         charge.id
       );
-      totalForcesDrawn++;
+      // totalForcesDrawn++;
     }
 
     // Draw most significant partial forces
@@ -668,12 +668,12 @@ export function drawElectricForcesGrid(app: PIXI.Application, charges: Charge[])
           charge.id,
           partialForce.sourceChargeId
         );
-        partialForcesDrawn++;
+        // partialForcesDrawn++;
       });
     }
   });
 
-  console.log(`[${performance.now().toFixed(2)}] Drew ${totalForcesDrawn} total forces and ${partialForcesDrawn} partial forces in ${(performance.now() - debugStart).toFixed(2)}ms`);
+  // console.log(`[${performance.now().toFixed(2)}] Drew ${totalForcesDrawn} total forces and ${partialForcesDrawn} partial forces in ${(performance.now() - debugStart).toFixed(2)}ms`);
 }
 
 // Helper function to draw a force arrow
@@ -813,7 +813,7 @@ export function highlightForcesFromCharge(app: PIXI.Application, sourceChargeId:
 // Optimized version for dragging
 export function drawElectricForcesGridDuringDrag(app: PIXI.Application, charges: Charge[]) {
   // Performance measurement
-  const debugStart = performance.now();
+  // const debugStart = performance.now();
 
   // Clear existing force vectors and labels
   removeAllForceElements(app);
@@ -824,7 +824,7 @@ export function drawElectricForcesGridDuringDrag(app: PIXI.Application, charges:
   const forceResults = calculateElectricForce(charges);
   if (!forceResults) return;
 
-  let totalVectorsDrawn = 0;
+  // let totalVectorsDrawn = 0;
 
   // Draw only total forces during drag for performance
   charges.forEach(charge => {
@@ -845,8 +845,8 @@ export function drawElectricForcesGridDuringDrag(app: PIXI.Application, charges:
       true,
       charge.id
     );
-    totalVectorsDrawn++;
+    // totalVectorsDrawn++;
   });
 
-  console.log(`[${performance.now().toFixed(2)}] Drew ${totalVectorsDrawn} forces during drag in ${(performance.now() - debugStart).toFixed(2)}ms`);
+  // console.log(`[${performance.now().toFixed(2)}] Drew ${totalVectorsDrawn} forces during drag in ${(performance.now() - debugStart).toFixed(2)}ms`);
 }

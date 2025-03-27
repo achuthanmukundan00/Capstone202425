@@ -293,7 +293,7 @@ watch(selectedChargeExists, (newVal) => {
         velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
       }
       velocityDirectionX.value = selectedCharge.rawDirection?.x?.toString() || selectedCharge.velocity.direction.x.toString();
-      velocityDirectionY.value = selectedCharge.rawDirection?.y?.toString() || selectedCharge.velocity.direction.y.toString();      
+      velocityDirectionY.value = selectedCharge.rawDirection?.y?.toString() || selectedCharge.velocity.direction.y.toString();
     }
     velocityInputError.value = '';
   } else {
@@ -351,7 +351,7 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
     },
   });
 
-    console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+    // console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
   }
 });
 
@@ -364,7 +364,7 @@ watch(polarity, (newPolarity) => {
     polarity: newPolarity
   });
 
-  console.log(`Updated charge ${chargesStore.selectedChargeId} polarity to ${newPolarity}`);
+  // console.log(`Updated charge ${chargesStore.selectedChargeId} polarity to ${newPolarity}`);
 });
 
 // Convert string values to numbers for the sliders
@@ -378,7 +378,7 @@ const chargeValueNum = computed({
         id: chargesStore.selectedChargeId,
         magnitude: val
       });
-      console.log(`Updated charge ${chargesStore.selectedChargeId} magnitude to ${val}`);
+      // console.log(`Updated charge ${chargesStore.selectedChargeId} magnitude to ${val}`);
     }
   }
 });
@@ -454,7 +454,7 @@ const setMode = (newMode: SimulationMode) => {
 
 // Add a watch for mode changes to ensure UI updates properly
 watch(() => chargesStore.mode, (newMode) => {
-  console.log(`Mode changed to: ${newMode}`);
+  // console.log(`Mode changed to: ${newMode}`);
   // Force reactive updates when switching between modes
   // This ensures the correct sidebar UI is displayed
   if (newMode === 'electric') {

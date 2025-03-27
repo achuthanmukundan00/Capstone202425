@@ -55,7 +55,7 @@ export const useChargesStore = defineStore('charges', {
     // Uniform magnetic field state (in Teslas, e.g. { x: 0, y: 0, z: 1 })
     magneticField: { x: 0, y: 0, z: 0 },
     isAnimating: false,
-    showForces: true,
+    showForces: false,
     animationMode: AnimationMode.stop,
   }),
 

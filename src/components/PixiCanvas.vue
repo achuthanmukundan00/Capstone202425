@@ -1037,7 +1037,7 @@ watch(
 
       // Only redraw if in electric mode and showForces is true
       if (chargesStore.mode === 'electric' && showForces) {
-        console.log("Showing electric forces, charge count:", chargesStore.charges.length);
+        // console.log("Showing electric forces, charge count:", chargesStore.charges.length);
 
         if (chargesStore.charges.length > 1) {
           // Use our new grid-based approach to draw all forces at once
@@ -1059,7 +1059,7 @@ watch(
           }
         }
       } else if (chargesStore.mode === 'magnetic' && showForces) {
-        console.log("Showing magnetic forces, charge count:", chargesStore.charges.length);
+        // console.log("Showing magnetic forces, charge count:", chargesStore.charges.length);
         // Re-draw magnetic forces
         drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
       }
