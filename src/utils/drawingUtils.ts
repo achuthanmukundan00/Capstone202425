@@ -3,6 +3,7 @@ import {
   calculateElectricField,
   calculateMagneticForce,
   normalizeAndScale,
+  calculateElectricForce
 } from './mathUtils'
 import type { Charge } from '@/stores/charges'
 import type { ChargesStore } from '@/stores/charges'
@@ -589,4 +590,263 @@ export function removeAllForceElements(app: PIXI.Application) {
   if (vectorsRemoved > 0 || labelsRemoved > 0) {
     console.log(`[${performance.now().toFixed(2)}] Removed ${vectorsRemoved} force vectors and ${labelsRemoved} labels in ${(performance.now() - debugStart).toFixed(2)}ms`);
   }
+}
+
+// Constants for force drawing
+const MIN_FORCE_THRESHOLD = 0.00001; // Minimum force magnitude to draw
+const FORCE_SCALE_FACTOR = 200; // Scale factor for force arrow length
+const MAX_FORCE_ARROWS = 5; // Maximum number of partial force arrows to draw per charge
+
+// New grid-based force drawing function
+export function drawElectricForcesGrid(app: PIXI.Application, charges: Charge[]) {
+  // Performance measurement
+  const debugStart = performance.now();
+
+  // Clear existing force vectors and labels
+  removeAllForceElements(app);
+
+  // Reset charge label mapping for consistent labeling
+  resetChargeLabelMapping();
+
+  if (charges.length <= 1) {
+    console.log(`[${performance.now().toFixed(2)}] No forces to draw (${charges.length} charges)`);
+    return;
+  }
+
+  // Calculate all forces first (similar to field calculation)
+  const forceResults = calculateElectricForce(charges);
+  if (!forceResults) {
+    console.log(`[${performance.now().toFixed(2)}] No force results calculated`);
+    return;
+  }
+
+  let totalForcesDrawn = 0;
+  let partialForcesDrawn = 0;
+
+  // Draw forces for each charge
+  charges.forEach(charge => {
+    const forceData = forceResults.get(charge.id);
+    if (!forceData) return;
+
+    // First update the charge's electricForce property (non-reactive)
+    charge.electricForce = {
+      partialForces: forceData.partialForces,
+      totalForce: forceData.totalForce
+    };
+
+    // Draw total force for this charge if significant
+    if (forceData.totalForce.magnitude > MIN_FORCE_THRESHOLD) {
+      drawForceArrow(
+        app,
+        charge.position,
+        forceData.totalForce,
+        true, // isTotal
+        charge.id
+      );
+      totalForcesDrawn++;
+    }
+
+    // Draw most significant partial forces
+    if (forceData.partialForces && forceData.partialForces.length > 0) {
+      // Sort forces by magnitude and limit to most significant ones
+      const significantForces = forceData.partialForces
+        .filter((pf: { magnitude: number }) => pf.magnitude > MIN_FORCE_THRESHOLD)
+        .sort((a: { magnitude: number }, b: { magnitude: number }) => b.magnitude - a.magnitude)
+        .slice(0, MAX_FORCE_ARROWS);
+
+      // Draw partial forces with lower alpha by default
+      significantForces.forEach((partialForce: {
+        magnitude: number;
+        direction: { x: number; y: number };
+        sourceChargeId?: string;
+      }) => {
+        drawForceArrow(
+          app,
+          charge.position,
+          partialForce,
+          false, // not total force
+          charge.id,
+          partialForce.sourceChargeId
+        );
+        partialForcesDrawn++;
+      });
+    }
+  });
+
+  console.log(`[${performance.now().toFixed(2)}] Drew ${totalForcesDrawn} total forces and ${partialForcesDrawn} partial forces in ${(performance.now() - debugStart).toFixed(2)}ms`);
+}
+
+// Helper function to draw a force arrow
+function drawForceArrow(
+  app: PIXI.Application,
+  position: {x: number, y: number},
+  force: {magnitude: number, direction: {x: number, y: number}},
+  isTotal: boolean,
+  chargeId: string,
+  sourceChargeId?: string
+) {
+  // Generate consistent ID for the arrow
+  const arrowId = isTotal
+    ? `electricForceVector`
+    : `electricForceVector-from-${sourceChargeId || 'unknown'}`;
+
+  // Create or reuse a graphics object from pool
+  const arrow = getVectorFromPool();
+  arrow.name = arrowId;
+  arrow.zIndex = 5; // Higher than field vectors but lower than charges
+
+  // Ensure arrow doesn't interfere with mouse events
+  arrow.eventMode = 'none'; // PIXI v7
+  arrow.interactive = false; // PIXI v6
+
+  // Set appearance based on type
+  const color = isTotal ? 0xff0000 : 0x00aaff; // Red for total, Blue for partial
+  const lineWidth = isTotal ? 3 : 2; // Thicker line for total force
+  const alpha = isTotal ? 1.0 : 0.5; // Default partial forces to 50% opacity
+
+  arrow.lineStyle(lineWidth, color, alpha);
+
+  // Calculate arrow length using logarithmic scaling
+  const magnitude = Math.max(0.001, force.magnitude); // Avoid log(0)
+  const logScaledMagnitude = Math.log(magnitude * 1e10 + 1) / Math.log(10);
+  const arrowLength = Math.min(FORCE_SCALE_FACTOR * logScaledMagnitude, 300); // Cap maximum length
+
+  // Calculate endpoint
+  const endX = position.x + force.direction.x * arrowLength;
+  const endY = position.y + force.direction.y * arrowLength;
+
+  // Draw arrow line
+  arrow.moveTo(position.x, position.y);
+  arrow.lineTo(endX, endY);
+
+  // Draw arrowhead
+  const angle = Math.atan2(endY - position.y, endX - position.x);
+  const arrowheadSize = isTotal ? ARROWHEAD_LENGTH * 1.2 : ARROWHEAD_LENGTH;
+
+  arrow.beginFill(color, alpha);
+  arrow.moveTo(endX, endY);
+  arrow.lineTo(
+    endX - arrowheadSize * Math.cos(angle - Math.PI / 6),
+    endY - arrowheadSize * Math.sin(angle - Math.PI / 6)
+  );
+  arrow.lineTo(
+    endX - arrowheadSize * Math.cos(angle + Math.PI / 6),
+    endY - arrowheadSize * Math.sin(angle + Math.PI / 6)
+  );
+  arrow.lineTo(endX, endY);
+  arrow.endFill();
+
+  // Add indicator and label for partial forces
+  if (!isTotal && sourceChargeId) {
+    // Position for the indicator (halfway along the force vector)
+    const indicatorX = position.x + (force.direction.x * arrowLength * 0.5);
+    const indicatorY = position.y + (force.direction.y * arrowLength * 0.5);
+
+    // Create a small dot indicator
+    const indicatorSize = 6;
+    arrow.beginFill(color, alpha);
+    arrow.drawCircle(indicatorX, indicatorY, indicatorSize);
+    arrow.endFill();
+
+    // Get or create a simple charge label
+    let chargeLabel = chargeIdToLabel.get(sourceChargeId);
+    if (!chargeLabel) {
+      chargeLabel = `C${chargeIdToLabel.size + 1}`;
+      chargeIdToLabel.set(sourceChargeId, chargeLabel);
+    }
+
+    // Create label
+    const labelName = `label-for-${arrow.name}`;
+    const label = createNonInteractiveLabel(
+      chargeLabel,
+      {
+        fontSize: 10,
+        fill: color,
+        fontWeight: 'bold',
+        align: 'center'
+      },
+      labelName
+    );
+
+    label.alpha = alpha;
+    label.anchor.set(0.5);
+    label.position.set(indicatorX, indicatorY - 10);
+
+    app.stage.addChild(label);
+  }
+
+  app.stage.addChild(arrow);
+  return arrow;
+}
+
+// Function to highlight forces from a specific charge
+export function highlightForcesFromCharge(app: PIXI.Application, sourceChargeId: string, highlight: boolean) {
+  if (!app) return;
+
+  // Performance measurement
+  const debugStart = performance.now();
+
+  // Find all partial forces from this charge
+  const vectors = app.stage.children.filter(
+    child => child.name?.startsWith(`electricForceVector-from-${sourceChargeId}`)
+  );
+
+  // Set alpha for all matching vectors and their labels
+  const targetAlpha = highlight ? 1.0 : 0.5;
+  let vectorsUpdated = 0;
+
+  vectors.forEach(vector => {
+    if (vector instanceof PIXI.Graphics) {
+      vector.alpha = targetAlpha;
+      vectorsUpdated++;
+
+      // Update associated label
+      const labelName = `label-for-${vector.name}`;
+      const label = app.stage.children.find(child => child.name === labelName);
+      if (label) label.alpha = targetAlpha;
+    }
+  });
+
+  console.log(`[${performance.now().toFixed(2)}] Highlighted ${vectorsUpdated} vectors for charge ${sourceChargeId}, highlight=${highlight} in ${(performance.now() - debugStart).toFixed(2)}ms`);
+}
+
+// Optimized version for dragging
+export function drawElectricForcesGridDuringDrag(app: PIXI.Application, charges: Charge[]) {
+  // Performance measurement
+  const debugStart = performance.now();
+
+  // Clear existing force vectors and labels
+  removeAllForceElements(app);
+
+  if (charges.length <= 1) return;
+
+  // Calculate all forces
+  const forceResults = calculateElectricForce(charges);
+  if (!forceResults) return;
+
+  let totalVectorsDrawn = 0;
+
+  // Draw only total forces during drag for performance
+  charges.forEach(charge => {
+    const forceData = forceResults.get(charge.id);
+    if (!forceData || forceData.totalForce.magnitude <= MIN_FORCE_THRESHOLD * 2) return;
+
+    // Update the charge's electricForce property
+    charge.electricForce = {
+      partialForces: forceData.partialForces,
+      totalForce: forceData.totalForce
+    };
+
+    // Draw only the total force during drag
+    drawForceArrow(
+      app,
+      charge.position,
+      forceData.totalForce,
+      true,
+      charge.id
+    );
+    totalVectorsDrawn++;
+  });
+
+  console.log(`[${performance.now().toFixed(2)}] Drew ${totalVectorsDrawn} forces during drag in ${(performance.now() - debugStart).toFixed(2)}ms`);
 }

@@ -78,6 +78,15 @@ export const useChargesStore = defineStore('charges', {
         }
       }
       this.charges.push(newCharge)
+
+      // Ensure the UI updates for electric field rendering
+      if (this.mode === 'electric') {
+        // Force a reactivity update by reassigning the charges array
+        // This will trigger the watcher in PixiCanvas.vue to redraw the field
+        setTimeout(() => {
+          this.charges = [...this.charges]
+        }, 50)
+      }
     },
 
     // Remove charge by ID
