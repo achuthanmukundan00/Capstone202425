@@ -95,7 +95,10 @@ export const useChargesStore = defineStore('charges', {
 
     // Set which charge is selected (for editing, highlighting, etc.)
     setSelectedCharge(id: string | null) {
-      this.selectedChargeId = id
+      // Only update if the selection actually changes
+      if (this.selectedChargeId !== id) {
+        this.selectedChargeId = id;
+      }
     },
 
     // Update existing charge fields (magnitude, polarity, velocity, etc.)

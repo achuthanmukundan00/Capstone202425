@@ -27,6 +27,11 @@ const MAX_POOL_SIZE = 100;
 // Map to store charge ID to simple label mapping (C1, C2, etc.)
 const chargeIdToLabel = new Map<string, string>();
 
+// Reset the charge label mapping (clear all labels)
+export function resetChargeLabelMapping() {
+  chargeIdToLabel.clear();
+}
+
 // Get a vector from the pool or create a new one
 function getVectorFromPool(): PIXI.Graphics {
   if (forceVectorPool.length > 0) {
@@ -152,9 +157,14 @@ export function drawElectricField(
 }
 
 export function drawElectricForce(app: PIXI.Application, force: { direction: { x: number; y: number }; magnitude: number }, position: { x: number; y: number }, isTotal: boolean = false, sourceChargeId?: string, alpha: number = 1.0) {
+  // Debug logging
+  const debugStart = performance.now();
+  const vectorType = isTotal ? "total" : "partial";
+  const vectorId = isTotal ? 'electricForceVector' : `electricForceVector-from-${sourceChargeId || 'unknown'}`;
+
   // Use object pooling for better performance
   const arrow = getVectorFromPool();
-  arrow.name = isTotal ? 'electricForceVector' : `electricForceVector-from-${sourceChargeId || 'unknown'}`;
+  arrow.name = vectorId;
   arrow.zIndex = 5; // Higher than field vectors but lower than charges
 
   // Ensure arrow doesn't interfere with mouse events on charges
@@ -243,14 +253,23 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
   }
 
   app.stage.addChild(arrow);
+
+  // Log the drawing operation
+  console.log(`[${performance.now().toFixed(2)}] Drew ${vectorType} force vector ${vectorId}, magnitude=${force.magnitude.toExponential(4)}, alpha=${alpha}, took ${(performance.now() - debugStart).toFixed(2)}ms`);
+
   return arrow;
 }
 
 export function drawElectricForceForCharge(app: PIXI.Application, charge: Charge) {
   // Skip if no forces calculated
-  if (!charge.electricForce || !charge.electricForce.totalForce) return;
+  if (!charge.electricForce || !charge.electricForce.totalForce) return {
+    total: 0,
+    partial: 0
+  };
 
   const totalForce = charge.electricForce.totalForce;
+  let totalVectorsDrawn = 0;
+  let partialVectorsDrawn = 0;
 
   // Use a higher threshold to avoid drawing very small forces
   // This improves performance by drawing fewer vectors
@@ -271,13 +290,20 @@ export function drawElectricForceForCharge(app: PIXI.Application, charge: Charge
     significantForces.forEach((partialForce) => {
       const sourceChargeId = partialForce.sourceChargeId || 'unknown';
       drawElectricForce(app, partialForce, charge.position, false, sourceChargeId, defaultPartialForceAlpha);
+      partialVectorsDrawn++;
     });
   }
 
   // Always draw the total force on top if it's significant
   if (totalForce.magnitude > MIN_FORCE_THRESHOLD) {
     drawElectricForce(app, totalForce, charge.position, true);
+    totalVectorsDrawn++;
   }
+
+  return {
+    total: totalVectorsDrawn,
+    partial: partialVectorsDrawn
+  };
 }
 
 export function drawMagneticForce(
@@ -514,11 +540,6 @@ export function drawVelocityOnAllCharges(
   })
 }
 
-// Function to reset the charge label mapping
-export function resetChargeLabelMapping() {
-  chargeIdToLabel.clear();
-}
-
 // Helper function to create a non-interactive label
 export function createNonInteractiveLabel(
   text: string,
@@ -539,17 +560,33 @@ export function createNonInteractiveLabel(
 export function removeAllForceElements(app: PIXI.Application) {
   if (!app) return;
 
+  // Debug: count how many elements we're removing
+  const debugStart = performance.now();
+  let vectorsRemoved = 0;
+  let labelsRemoved = 0;
+
   // Clean up all force vectors and their labels using pooling
-  clearAndPoolVectors(app, child =>
-    child.name === 'electricForceVector' ||
-    child.name?.startsWith('electricForceVector-from-')
-  );
+  clearAndPoolVectors(app, child => {
+    const isForceVector = child.name === 'electricForceVector' ||
+                         child.name?.startsWith('electricForceVector-from-');
+    if (isForceVector) vectorsRemoved++;
+    return isForceVector;
+  });
 
   // Remove all force-related labels (which aren't pooled)
   app.stage.children
-    .filter(child => child.name?.startsWith('label-for-'))
+    .filter(child => {
+      const isLabel = child.name?.startsWith('label-for-');
+      if (isLabel) labelsRemoved++;
+      return isLabel;
+    })
     .forEach(child => app.stage.removeChild(child));
 
   // Reset the charge label mapping
   resetChargeLabelMapping();
+
+  // Debug: log removal stats if we had any significant removal
+  if (vectorsRemoved > 0 || labelsRemoved > 0) {
+    console.log(`[${performance.now().toFixed(2)}] Removed ${vectorsRemoved} force vectors and ${labelsRemoved} labels in ${(performance.now() - debugStart).toFixed(2)}ms`);
+  }
 }
