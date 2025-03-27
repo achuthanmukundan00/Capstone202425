@@ -479,7 +479,7 @@ const startFlickerDetection = () => {
 onMounted(async () => {
   // Initialize PixiJS Application
   app = new PIXI.Application({
-    resolution: 2,
+    resolution: window.devicePixelRatio || 1,
     autoDensity: true,
     antialias: true,
   });
