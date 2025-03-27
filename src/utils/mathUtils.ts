@@ -78,20 +78,19 @@ function getForceCacheKey(charge1: Charge, charge2: Charge): string {
   return `${charge1.id}-${charge2.id}-${charge1.position.x.toFixed(0)}-${charge1.position.y.toFixed(0)}-${charge2.position.x.toFixed(0)}-${charge2.position.y.toFixed(0)}-${charge1.magnitude}-${charge2.magnitude}-${charge1.polarity}-${charge2.polarity}`;
 }
 
-// Calculates the partial and total electric force on a charge due to all other charges in the system and updates the charge object with the new force values
+// Calculate the partial and total electric force on a charge due to all other charges
 export function calculateElectricForce(charges: Charge[]) {
   if (charges.length <= 1) return; // Need at least 2 charges to have forces
 
-  // Reset all forces
-  charges.forEach(charge => {
-    charge.electricForce = {
-      partialForces: [],
-      totalForce: {
-        magnitude: 0,
-        direction: { x: 0, y: 0 }
-      }
-    };
-  });
+  // Results container to avoid direct charge mutation
+  const forceResults = new Map<string, {
+    partialForces: Array<{
+      direction: { x: number; y: number };
+      magnitude: number;
+      sourceChargeId?: string;
+    }>,
+    totalForce: { magnitude: number; direction: { x: number; y: number } }
+  }>();
 
   // Calculate forces between each pair of charges
   for (let i = 0; i < charges.length; i++) {
@@ -99,6 +98,11 @@ export function calculateElectricForce(charges: Charge[]) {
     let totalForceX = 0;
     let totalForceY = 0;
     let totalForceMagnitude = 0;
+    const partialForces: Array<{
+      direction: { x: number; y: number };
+      magnitude: number;
+      sourceChargeId?: string;
+    }> = [];
 
     for (let j = 0; j < charges.length; j++) {
       if (i === j) continue; // Skip self
@@ -111,7 +115,7 @@ export function calculateElectricForce(charges: Charge[]) {
 
       if (forceCache.has(cacheKey)) {
         partialForce = forceCache.get(cacheKey)!;
-        charge1.electricForce.partialForces.push({...partialForce.partialForces[0]});
+        partialForces.push({...partialForce.partialForces[0]});
 
         // Add to total
         totalForceX += partialForce.partialForces[0].direction.x * partialForce.partialForces[0].magnitude;
@@ -151,8 +155,8 @@ export function calculateElectricForce(charges: Charge[]) {
         sourceChargeId: charge2.id // Store the ID of the charge causing this force
       };
 
-      // Add this partial force to charge1's forces
-      charge1.electricForce.partialForces.push(newPartialForce);
+      // Add this partial force to our collection
+      partialForces.push(newPartialForce);
 
       // Update total force components
       totalForceX += dirX * forceSign * forceMagnitude;
@@ -177,18 +181,27 @@ export function calculateElectricForce(charges: Charge[]) {
     // Compute the total force direction
     const totalMagnitude = Math.sqrt(totalForceX * totalForceX + totalForceY * totalForceY);
 
-    if (totalMagnitude > 0) {
-      charge1.electricForce.totalForce = {
-        magnitude: totalForceMagnitude,
-        direction: {
-          x: totalForceX / totalMagnitude,
-          y: totalForceY / totalMagnitude
-        }
-      };
-    }
-  }
-}
+    const totalForce = totalMagnitude > 0 ? {
+      magnitude: totalForceMagnitude,
+      direction: {
+        x: totalForceX / totalMagnitude,
+        y: totalForceY / totalMagnitude
+      }
+    } : {
+      magnitude: 0,
+      direction: { x: 0, y: 0 }
+    };
 
+    // Store the results for this charge
+    forceResults.set(charge1.id, {
+      partialForces,
+      totalForce
+    });
+  }
+
+  // Return the results to be applied by the caller
+  return forceResults;
+}
 
 // Calculate the magnetic force vector on a moving point charge
 export function calculateMagneticForce(
