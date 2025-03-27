@@ -28,7 +28,7 @@ import { ColorPalettes } from '@/utils/colorPalettes'
 const DEBUG_FORCES = true; // Set to true to enable force vector debugging
 const forceOperations = new Map<string, {
   createdAt: number,
-  updates: Array<{timestamp: number, operation: string, alpha?: number}>
+  updates: Array<{ timestamp: number, operation: string, alpha?: number }>
 }>();
 
 function logForceOperation(vectorId: string, operation: string, details: Record<string, unknown> = {}) {
@@ -106,7 +106,6 @@ const chargesStore = useChargesStore();
 const chargesGraphics = new Map<string, PIXI.Graphics>(); // Map to keep track of drawn charges
 const trailGraphicsMap = new Map<string, PIXI.Graphics>(); // keep track of drawn trails (k: charge.id, value: trail)
 
-let animationFrameId: number;
 let app: PIXI.Application | null = null;
 let lastForceUpdateTime = 0;
 const FORCE_UPDATE_THROTTLE = 50; // Only update forces every 50ms during drag (was 100ms)
@@ -262,7 +261,7 @@ function debouncedHighlight(app: PIXI.Application, sourceChargeId: string, isHig
 
   highlightTimeout = setTimeout(() => {
     if ((isHighlighted && currentHoveredChargeId === sourceChargeId) ||
-        (!isHighlighted && !isHoveringCharge)) {
+      (!isHighlighted && !isHoveringCharge)) {
       highlightPartialForces(app, sourceChargeId, isHighlighted);
     }
     highlightTimeout = null;
@@ -440,23 +439,23 @@ const updateChargeMotion = () => {
   }
   else {
     chargesStore.charges.forEach(charge => {
-    const force = calculateMagneticForce(charge, chargesStore.magneticField);
-    charge.velocity.direction.x += force.x * FORCE_SCALING;
-    charge.velocity.direction.y += force.y * FORCE_SCALING;
-    charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
-    charge.position.y += charge.velocity.direction.y * ANIMATION_SPEED;
+      const force = calculateMagneticForce(charge, chargesStore.magneticField);
+      charge.velocity.direction.x += force.x * FORCE_SCALING;
+      charge.velocity.direction.y += force.y * FORCE_SCALING;
+      charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
+      charge.position.y += charge.velocity.direction.y * ANIMATION_SPEED;
 
-    let trailGraphics = trailGraphicsMap.get(charge.id);
-    if (!trailGraphics) {
-      trailGraphics = new PIXI.Graphics();
-      // Ensure the trail renders behind the charge
-      trailGraphics.zIndex = 5;
-      trailGraphicsMap.set(charge.id, trailGraphics);
-      app!.stage.addChild(trailGraphics);
-    }
+      let trailGraphics = trailGraphicsMap.get(charge.id);
+      if (!trailGraphics) {
+        trailGraphics = new PIXI.Graphics();
+        // Ensure the trail renders behind the charge
+        trailGraphics.zIndex = 5;
+        trailGraphicsMap.set(charge.id, trailGraphics);
+        app!.stage.addChild(trailGraphics);
+      }
 
-    updateChargeTrail(charge, trailGraphics);
-  });
+      updateChargeTrail(charge, trailGraphics);
+    });
   }
 };
 
@@ -468,7 +467,7 @@ function analyzeForceUpdates() {
   const FLICKER_THRESHOLD = 100; // Consider updates within 100ms of each other as potential flicker
 
   // Find force vectors with rapid updates
-  const flickeringVectors: Array<{vectorId: string, updates: number, timespan: number}> = [];
+  const flickeringVectors: Array<{ vectorId: string, updates: number, timespan: number }> = [];
 
   forceOperations.forEach((data, vectorId) => {
     // Get updates within last 500ms
@@ -478,7 +477,7 @@ function analyzeForceUpdates() {
       // Detect if any updates were very close together (potential flicker)
       let hasRapidUpdates = false;
       for (let i = 1; i < recentUpdates.length; i++) {
-        const timeDiff = recentUpdates[i].timestamp - recentUpdates[i-1].timestamp;
+        const timeDiff = recentUpdates[i].timestamp - recentUpdates[i - 1].timestamp;
         if (timeDiff < FLICKER_THRESHOLD) {
           hasRapidUpdates = true;
           break;
@@ -789,7 +788,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   canvasContainer.value?.removeEventListener('mousemove', handleMouseMove);
-  cancelAnimationFrame(animationFrameId);
 
   if (app) {
     app.destroy(true, { children: true });
@@ -800,23 +798,23 @@ onBeforeUnmount(() => {
 });
 
 const resize = () => {
-  if (app) {
-    app.renderer.resize(window.innerWidth, window.innerHeight);
-    app.renderer.resolution = window.devicePixelRatio || 1;
-    app.renderer.resize(window.innerWidth, window.innerHeight);
+  if (!app) return;
 
-    if (chargesStore.mode === 'electric') {
-      removeFields(app!);
-      drawElectricField(app, chargesStore.charges, palette.value);
-    } else {
-      removeFields(app!);
-      drawMagneticField(app!, chargesStore.magneticField)
-      drawMagneticForcesOnAllCharges(app!, chargesStore, palette.value);
-      drawVelocityOnAllCharges(app!, chargesStore, palette.value);
-    }
-    updateChargesOnCanvas(chargesStore.charges);
+  // If letting Pixi handle density, we don't manually set resolution at all:
+  app.renderer.resize(window.innerWidth, window.innerHeight);
+
+  if (chargesStore.mode === 'electric') {
+    removeFields(app);
+    drawElectricField(app, chargesStore.charges, palette.value);
+  } else {
+    removeFields(app);
+    drawMagneticField(app, chargesStore.magneticField);
+    drawMagneticForcesOnAllCharges(app, chargesStore, palette.value);
+    drawVelocityOnAllCharges(app, chargesStore, palette.value);
   }
+  updateChargesOnCanvas(chargesStore.charges);
 };
+
 
 // Function to reset all partial forces to non-highlighted state
 function resetAllPartialForceHighlights(app: PIXI.Application) {
