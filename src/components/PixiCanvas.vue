@@ -776,8 +776,6 @@ onBeforeUnmount(() => {
 const resize = () => {
   if (app) {
     app.renderer.resize(window.innerWidth, window.innerHeight);
-    app.renderer.resolution = window.devicePixelRatio || 1;
-    app.renderer.resize(window.innerWidth, window.innerHeight);
 
     if (chargesStore.mode === 'electric') {
       removeFields(app!);
