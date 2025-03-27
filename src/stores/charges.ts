@@ -11,6 +11,10 @@ export interface Charge {
     magnitude: number
     direction: { x: number; y: number }
   }
+  rawDirection?: {
+    x: number;
+    y: number;
+  }
   electricForce: {
     partialForces: {
       direction: { x: number; y: number };
@@ -103,16 +107,19 @@ export const useChargesStore = defineStore('charges', {
 
     // Update existing charge fields (magnitude, polarity, velocity, etc.)
     updateCharge(updatedCharge: Partial<Charge> & { id: string }) {
-      const charge = this.charges.find(c => c.id === updatedCharge.id)
+      const charge = this.charges.find(c => c.id === updatedCharge.id);
       if (charge) {
         if (updatedCharge.magnitude !== undefined) {
-          charge.magnitude = updatedCharge.magnitude
+          charge.magnitude = updatedCharge.magnitude;
         }
         if (updatedCharge.polarity !== undefined) {
-          charge.polarity = updatedCharge.polarity
+          charge.polarity = updatedCharge.polarity;
         }
         if (updatedCharge.velocity !== undefined) {
-          charge.velocity = updatedCharge.velocity
+          charge.velocity = updatedCharge.velocity;
+        }
+        if (updatedCharge.rawDirection !== undefined) {
+          charge.rawDirection = updatedCharge.rawDirection; // Preserve raw user inputs
         }
       }
     },
@@ -200,4 +207,3 @@ export interface ChargesStore extends Store {
   magneticField: { x: number; y: number; z: number };
   showForces: boolean;
 }
-

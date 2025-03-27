@@ -290,9 +290,12 @@ watch(selectedChargeExists, (newVal) => {
     if (selectedCharge) {
       chargeValue.value = selectedCharge.magnitude.toString();
       polarity.value = selectedCharge.polarity;
-      velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
-      velocityDirectionX.value = selectedCharge.velocity.direction.x.toString();
-      velocityDirectionY.value = selectedCharge.velocity.direction.y.toString();
+      // Only update velocity inputs if they differ from the charge's current values
+      if (velocityMagnitude.value !== selectedCharge.velocity.magnitude.toString()) {
+        velocityMagnitude.value = selectedCharge.velocity.magnitude.toString();
+      }
+      velocityDirectionX.value = selectedCharge.rawDirection?.x?.toString() || selectedCharge.velocity.direction.x.toString();
+      velocityDirectionY.value = selectedCharge.rawDirection?.y?.toString() || selectedCharge.velocity.direction.y.toString();      
     }
     velocityInputError.value = '';
   } else {
@@ -307,24 +310,51 @@ watch([velocityMagnitude, velocityDirectionX, velocityDirectionY], () => {
   const charge = chargesStore.charges.find(c => c.id === chargeId);
   if (!charge) return;
 
-  // Normalize direction vector
+  // Parse and validate inputs
   const dirX = parseFloat(velocityDirectionX.value) || 0;
   const dirY = parseFloat(velocityDirectionY.value) || 0;
   const magnitude = parseFloat(velocityMagnitude.value) || 0;
-  const length = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
 
-  chargesStore.updateCharge({
-    id: chargeId,
-    velocity: {
-      magnitude: magnitude,
-      direction: {
-        x: (dirX / length) * magnitude,
-        y: (-dirY / length) * magnitude, // Flip the y-direction
-      }
+  // Compare with the existing charge values
+  const existingDirX = charge.velocity.direction.x;
+  const existingDirY = charge.velocity.direction.y;
+  const existingMagnitude = charge.velocity.magnitude;
+
+  // Only update if the values have changed
+  if (
+    dirX !== existingDirX ||
+    dirY !== existingDirY ||
+    magnitude !== existingMagnitude
+  ) {
+    // Calculate length of the direction vector
+    const length = Math.sqrt(dirX * dirX + dirY * dirY);
+
+    // Handle edge cases for length
+    let normalizedX = dirX;
+    let normalizedY = dirY;
+    if (length > 0) {
+      normalizedX = dirX / length;
+      normalizedY = dirY / length;
     }
+
+    // Update the charge in the store
+    chargesStore.updateCharge({
+      id: chargeId,
+      velocity: {
+        magnitude: magnitude,
+        direction: {
+          x: normalizedX * magnitude, // Scale by magnitude
+          y: -normalizedY * magnitude, // Scale by magnitude
+        },
+      },
+      rawDirection: {
+      x: dirX, // Preserve raw user input
+      y: dirY, // Preserve raw user input
+    },
   });
 
-  console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+    console.log(`Updated charge ${chargeId} velocity:`, chargesStore.charges.find(c => c.id === chargeId)?.velocity);
+  }
 });
 
 // Convert string values to numbers for the sliders
