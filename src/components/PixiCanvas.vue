@@ -27,7 +27,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { ColorPalettes } from '@/utils/colorPalettes'
 
 // Debugging utilities for force arrow flickering
-const DEBUG_FORCES = true; // Set to true to enable force vector debugging
+const DEBUG_FORCES = false; // Set to true to enable force vector debugging
 const forceOperations = new Map<string, {
   createdAt: number,
   updates: Array<{ timestamp: number, operation: string, alpha?: number }>
@@ -277,7 +277,9 @@ function handleMouseMove(event: MouseEvent) {
 
   if (chargesStore.mode === 'electric') {
     const field = getNetElectricFieldAtPoint({ x, y });
-    fieldReadout.value = `Ex: ${(field.x / 1e3).toFixed(2)} kN/C, Ey: ${(-field.y / 1e3).toFixed(2)} kN/C`;
+    const fieldX = Math.abs(field.x / 1e3) > 40000 ? `${field.x > 0 ? '+' : '-'}NaN` : (field.x / 1e3).toFixed(2);
+    const fieldY = Math.abs(field.y / 1e3) > 40000 ? `${field.y > 0 ? '+' : '-'}NaN` : (-field.y / 1e3).toFixed(2);
+    fieldReadout.value = `Ex: ${fieldX} kN/C, Ey: ${fieldY} kN/C`;
   } else if (chargesStore.mode === 'magnetic') {
     const selected = chargesStore.charges.find(c => c.id === chargesStore.selectedChargeId);
     if (!selected) {

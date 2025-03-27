@@ -784,7 +784,7 @@ export function highlightForcesFromCharge(app: PIXI.Application, sourceChargeId:
   if (!app) return;
 
   // Performance measurement
-  const debugStart = performance.now();
+  // const debugStart = performance.now();
 
   // Find all partial forces from this charge
   const vectors = app.stage.children.filter(
@@ -793,12 +793,12 @@ export function highlightForcesFromCharge(app: PIXI.Application, sourceChargeId:
 
   // Set alpha for all matching vectors and their labels
   const targetAlpha = highlight ? 1.0 : 0.5;
-  let vectorsUpdated = 0;
+  // let vectorsUpdated = 0;
 
   vectors.forEach(vector => {
     if (vector instanceof PIXI.Graphics) {
       vector.alpha = targetAlpha;
-      vectorsUpdated++;
+      // vectorsUpdated++;
 
       // Update associated label
       const labelName = `label-for-${vector.name}`;
@@ -807,7 +807,7 @@ export function highlightForcesFromCharge(app: PIXI.Application, sourceChargeId:
     }
   });
 
-  console.log(`[${performance.now().toFixed(2)}] Highlighted ${vectorsUpdated} vectors for charge ${sourceChargeId}, highlight=${highlight} in ${(performance.now() - debugStart).toFixed(2)}ms`);
+  // console.log(`[${performance.now().toFixed(2)}] Highlighted ${vectorsUpdated} vectors for charge ${sourceChargeId}, highlight=${highlight} in ${(performance.now() - debugStart).toFixed(2)}ms`);
 }
 
 // Optimized version for dragging
