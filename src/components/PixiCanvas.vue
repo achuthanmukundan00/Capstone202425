@@ -1211,7 +1211,7 @@ function drawElectricFieldDuringDrag(app: PIXI.Application, charges: Charge[]) {
 .canvas-container {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   flex-grow: 1;
   overflow: hidden;
 }
