@@ -331,8 +331,8 @@ export function drawMagneticForce(
 
   // Normalize the force using the scaled length
   const normalizedForce = {
-    x: (scaledForce.x / length) * length,
-    y: (scaledForce.y / length) * length,
+    x: -(scaledForce.x / length) * length,
+    y: -(scaledForce.y / length) * length,
   }
 
   const arrow = new PIXI.Graphics()
