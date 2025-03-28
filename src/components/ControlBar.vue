@@ -486,8 +486,13 @@ watch(() => chargesStore.mode, (newMode) => {
 
 const magneticFieldValueNum = computed({
   get: () => Number(magneticFieldValue.value) || 0,
-  set: (val: number) => { magneticFieldValue.value = val.toString(); }
+  set: (val: number) => {
+    magneticFieldValue.value = val.toString();
+    const zComponent = magneticFieldDirection.value === 'out' ? val : -val;
+    chargesStore.setMagneticField({ x: 0, y: 0, z: zComponent });
+  }
 });
+
 
 const velocityMagnitudeNum = computed({
   get: () => Number(velocityMagnitude.value) || 0,
