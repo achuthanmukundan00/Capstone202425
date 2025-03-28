@@ -107,25 +107,40 @@
         <div class="form-group">
           <label>Magnetic Field Direction:</label>
           <button @click="toggleMagneticFieldDirection" class="direction-toggle">
-            {{ magneticFieldDirection === 'out' ? '⬆ Out of Page' : '⬇ Into Page' }}
+            {{ magneticFieldDirection === 'out' ? '(•)  Out of Page' : '(×)  Into the Page' }}
           </button>
         </div>
         <div class="button-group">
-          <button class="action-button start-button" :class="{ active: animationMode === AnimationMode.start }"
-            @click="startAnimation"
-            :disabled="!(animationMode === AnimationMode.stop || animationMode === AnimationMode.reset)">
-            Start Animation
-          </button>
+          <!-- Start Animation -->
+            <button
+              class="action-button start-button"
+              :class="{ active: animationMode === AnimationMode.start }"
+              @click="startAnimation"
+              :disabled="!(hasCharges && (animationMode === AnimationMode.stop || animationMode === AnimationMode.reset))"
+            >
+              Start Animation
+            </button>
 
-          <button class="action-button stop-button" :class="{ active: animationMode === AnimationMode.stop }"
-            @click="stopAnimation" :disabled="animationMode !== AnimationMode.start">
-            Stop Animation
-          </button>
+            <!-- Stop Animation -->
+            <button
+              class="action-button stop-button"
+              :class="{ active: animationMode === AnimationMode.stop }"
+              @click="stopAnimation"
+              :disabled="!(hasCharges && animationMode === AnimationMode.start)"
+            >
+              Stop Animation
+            </button>
 
-          <button class="action-button reset-button" :class="{ active: animationMode === AnimationMode.reset }"
-            @click="resetAnimation" :disabled="animationMode !== AnimationMode.stop">
-            Reset Animation
-          </button>
+            <!-- Reset Animation -->
+            <button
+              class="action-button reset-button"
+              :class="{ active: animationMode === AnimationMode.reset }"
+              @click="resetAnimation"
+              :disabled="!(hasCharges && animationMode === AnimationMode.stop && hasAnimationRun)"
+
+            >
+              Reset Animation
+            </button>
         </div>
       </template>
 
@@ -211,6 +226,8 @@ const velocityInputError = ref('');
 const isSettingsModalOpen = ref(false);
 const isDarkMode = ref(false); // or pull this from your settings store if global
 
+const hasAnimationRun = ref(false);
+
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value;
   document.body.classList.toggle('dark-mode', isDarkMode.value);
@@ -224,6 +241,7 @@ const startAnimation = () => {
   if (animationMode.value === AnimationMode.stop || animationMode.value === AnimationMode.reset) {
     chargesStore.startAnimation();
     animationMode.value = AnimationMode.start;
+    hasAnimationRun.value = true; // mark animation has run
   }
 };
 
@@ -238,8 +256,10 @@ const resetAnimation = () => {
   if (animationMode.value === AnimationMode.stop) {
     chargesStore.resetAnimation();
     animationMode.value = AnimationMode.reset;
+    hasAnimationRun.value = false; // Reset the flag
   }
 };
+
 
 const checkChargeSelected = (event: FocusEvent) => {
   if (!selectedChargeExists.value) {
@@ -270,6 +290,9 @@ const isValid = computed(() => {
 const selectedChargeExists = computed(() => {
   return chargesStore.selectedChargeId !== null;
 });
+
+const hasCharges = computed(() => chargesStore.charges.length > 0);
+
 
 watch(selectedChargeExists, (newVal) => {
   if (newVal) {
@@ -590,20 +613,89 @@ const toggleForceVisibility = () => {
 }
 
 /* Specific styles for Start, Stop, and Reset buttons */
-.start-button.active {
+/* Removed colors from animation buttons */
+/* Uniform style for all animation buttons */
+/* Start button enabled – green like Add Charge */
+.start-button:enabled {
   background-color: #2ecc71;
-  /* Bright green when animation is started */
+  color: white;
+  border: none;
 }
 
-.stop-button.active {
-  background-color: #e74c3c;
-  /* Red when animation is stopped */
+/* Start button hover (only when enabled) */
+.start-button:enabled:hover {
+  background-color: #27ae60;
 }
 
+/* Disabled state (uniform with others) */
+.start-button:disabled,
+.stop-button:disabled,
+.reset-button:disabled {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+
+.start-button.active,
+.stop-button.active,
 .reset-button.active {
-  background-color: #f39c12;
-  /* Orange when animation is reset */
+  background-color: #d5d5d5;
+  color: #333;
 }
+.start-button:disabled,
+.stop-button:disabled,
+.reset-button:disabled {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+/* Reset button enabled – orange like Add Charge */
+.reset-button:enabled {
+  background-color: #f39c12;
+  color: white;
+  border: none;
+}
+
+/* Reset button hover (only when enabled) */
+.reset-button:enabled:hover {
+  background-color: #e67e22;
+}
+
+/* Disabled state – consistent neutral style */
+.start-button:disabled,
+.stop-button:disabled,
+.reset-button:disabled {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+/* Stop button enabled – red */
+.stop-button:enabled {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+}
+
+/* Stop button hover (only when enabled) */
+.stop-button:enabled:hover {
+  background-color: #c0392b;
+}
+
+/* Shared disabled style – neutral gray */
+.start-button:disabled,
+.stop-button:disabled,
+.reset-button:disabled {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
 
 .add-button {
   background-color: #2ecc71;
