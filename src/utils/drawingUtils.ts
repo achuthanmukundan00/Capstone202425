@@ -182,7 +182,8 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
 
   // Make arrow length proportional to force magnitude
   // But use log scaling to handle wide range of magnitudes
-  const magnitude = Math.max(0.001, force.magnitude); // Avoid log(0)
+  //const magnitude = Math.max(0.001, force.magnitude); // Avoid log(0)
+  const magnitude = force.magnitude
   const logScaledMagnitude = Math.log(magnitude * 1e10 + 1) / Math.log(10);
   const arrowLength = Math.min(scaleFactor * logScaledMagnitude, 300); // Cap maximum length
 
@@ -191,7 +192,7 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
 
   // Draw the main line
   arrow.moveTo(position.x, position.y);
-  arrow.lineTo(endX, endY);
+      arrow.lineTo(endX, endY);
 
   // Draw arrowhead
   const angle = Math.atan2(endY - position.y, endX - position.x);
@@ -199,8 +200,8 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
 
   // Create filled arrowhead
   arrow.beginFill(color, alpha);
-  arrow.moveTo(endX, endY);
-  arrow.lineTo(
+      arrow.moveTo(endX, endY);
+      arrow.lineTo(
     endX - arrowheadSize * Math.cos(angle - Math.PI / 6),
     endY - arrowheadSize * Math.sin(angle - Math.PI / 6)
   );
@@ -221,7 +222,7 @@ export function drawElectricForce(app: PIXI.Application, force: { direction: { x
     const indicatorSize = 6;
     arrow.beginFill(color, alpha);
     arrow.drawCircle(indicatorX, indicatorY, indicatorSize);
-    arrow.endFill();
+      arrow.endFill();
 
     // Get or create a simple charge label (C1, C2, etc.)
     let chargeLabel = chargeIdToLabel.get(sourceChargeId);

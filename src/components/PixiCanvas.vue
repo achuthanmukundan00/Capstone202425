@@ -638,11 +638,19 @@ onMounted(async () => {
   // Watch for changes in the charges array with decreased sensitivity
   watch(
     () => chargesStore.charges,
-    (newCharges) => {
+    (newCharges, oldCharges = []) => {
       if (!app || isUpdatingForces) return;
 
       if (DEBUG_FORCES) {
         console.log(`[${performance.now().toFixed(2)}] Charges changed, count: ${newCharges.length}, isDragging: ${isDragging}`);
+      }
+
+      // Special case: If we had 2+ charges and now have 1 or 0, clear force arrows
+      if (oldCharges.length > 1 && newCharges.length <= 1 && chargesStore.showForces) {
+        if (DEBUG_FORCES) {
+          console.log(`[${performance.now().toFixed(2)}] Charge count reduced to ${newCharges.length}, clearing force arrows`);
+        }
+        removeAllForceElements(app);
       }
 
       // During drag operations, we already handle force updates with throttling
@@ -686,7 +694,7 @@ onMounted(async () => {
           }
 
           // Always update the charges on canvas
-          updateChargesOnCanvas(newCharges);
+      updateChargesOnCanvas(newCharges);
         } finally {
           isUpdatingForces = false;
         }
@@ -777,7 +785,7 @@ const resize = () => {
   if (!app) return;
 
   // If letting Pixi handle density, we don't manually set resolution at all:
-  app.renderer.resize(window.innerWidth, window.innerHeight);
+    app.renderer.resize(window.innerWidth, window.innerHeight);
 
   if (chargesStore.mode === 'electric') {
     removeFields(app);
@@ -841,23 +849,23 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
   try {
     const scaleFactor = window.innerWidth < 600 ? 0.6 : 1.0;
 
-    // Remove graphics for charges that no longer exist
-    for (const [id, graphic] of chargesGraphics) {
-      if (!charges.find((charge) => charge.id === id)) {
-        app.stage.removeChild(graphic);
-        chargesGraphics.delete(id);
-      }
+  // Remove graphics for charges that no longer exist
+  for (const [id, graphic] of chargesGraphics) {
+    if (!charges.find((charge) => charge.id === id)) {
+      app.stage.removeChild(graphic);
+      chargesGraphics.delete(id);
     }
+  }
 
-    // Add or update graphics for current charges
-    charges.forEach((charge) => {
-      let graphic = chargesGraphics.get(charge.id);
-      if (!graphic) {
-        graphic = new PIXI.Graphics();
+  // Add or update graphics for current charges
+  charges.forEach((charge) => {
+    let graphic = chargesGraphics.get(charge.id);
+    if (!graphic) {
+      graphic = new PIXI.Graphics();
         // Set a high zIndex so that charges render on top of arrows
         graphic.zIndex = 10;
-        chargesGraphics.set(charge.id, graphic);
-        app?.stage.addChild(graphic);
+      chargesGraphics.set(charge.id, graphic);
+      app?.stage.addChild(graphic);
 
         // Configure interactivity for both PIXI v6 and v7 compatibility
         graphic.eventMode = 'static'; // PIXI v7 property
@@ -873,7 +881,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
           // Stop propagation to prevent stage from deselecting
           event.stopPropagation();
-          chargesStore.setSelectedCharge(charge.id);
+        chargesStore.setSelectedCharge(charge.id);
 
           // Also store data for drag handling
           graphic!.data = event.data;
@@ -882,13 +890,13 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
         // Drag handling events
         graphic
-          .on('pointerup', () => {
-            graphic!.dragging = false;
-            graphic!.data = null;
-          })
-          .on('pointerupoutside', () => {
-            graphic!.dragging = false;
-            graphic!.data = null;
+        .on('pointerup', () => {
+          graphic!.dragging = false;
+          graphic!.data = null;
+        })
+        .on('pointerupoutside', () => {
+          graphic!.dragging = false;
+          graphic!.data = null;
           });
 
         // Add hover handlers for force highlighting
@@ -955,12 +963,12 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
           // Mark that we need an update when dragging stops
           needsForceUpdate = true;
         }
-      } else {
-        graphic.clear();
-      }
+    } else {
+      graphic.clear();
+    }
 
       const color = charge.polarity === 'positive' ? palette.value.chargePositive : palette.value.chargeNegative;
-      const polarity = charge.polarity === 'positive' ? "+" : "-";
+    const polarity = charge.polarity === 'positive' ? "+" : "-";
 
       // Draw the charge circle
       const radius = 24 * scaleFactor;
@@ -970,11 +978,11 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       graphic.endFill();
 
       // Set position
-      graphic.position.set(charge.position.x, charge.position.y);
+    graphic.position.set(charge.position.x, charge.position.y);
 
-      // Create or update the text label for the charge magnitude
-      let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
-      if (!text) {
+    // Create or update the text label for the charge magnitude
+    let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
+    if (!text) {
         const labelText = `${polarity}${charge.magnitude}C`;
         text = new PIXI.Text(labelText, {
           fontFamily: settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins',
@@ -985,10 +993,10 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
         text.name = 'chargeLabel';
         text.anchor.set(0.5);
         text.position.set(0, 0);
-        text.name = 'chargeLabel';
-        graphic.addChild(text);
-      } else {
-        text.text = polarity + charge.magnitude.toString() + 'C';
+      text.name = 'chargeLabel';
+      graphic.addChild(text);
+    } else {
+      text.text = polarity + charge.magnitude.toString() + 'C';
         text.style.fontFamily = settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins';
         text.style.fontSize = 16 * scaleFactor;
       }
