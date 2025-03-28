@@ -27,7 +27,7 @@ export const MAGNETIC_FIELD_BOUNDS = {
 
 export const VELOCITY_BOUNDS = {
   MIN: 0,
-  MAX: 100,
+  MAX: 5,
   STEP: 1,
 } as const;
 
