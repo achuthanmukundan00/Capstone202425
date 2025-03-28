@@ -460,7 +460,11 @@ const resetForm = () => {
 
 // Add mode setter
 const setMode = (newMode: SimulationMode) => {
-  chargesStore.resetAnimation();
+  chargesStore.animationMode = AnimationMode.reset;
+  chargesStore.charges.forEach(charge => {
+    charge.trail = [];
+    delete charge.trailSampleCounter;
+  });
   chargesStore.setMode(newMode);
 };
 
