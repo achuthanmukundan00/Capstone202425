@@ -107,40 +107,29 @@
         <div class="form-group">
           <label>Magnetic Field Direction:</label>
           <button @click="toggleMagneticFieldDirection" class="direction-toggle">
-            {{ magneticFieldDirection === 'out' ? '(•)  Out of Page' : '(×)  Into the Page' }}
+            {{ magneticFieldDirection === 'out' ? '(•) Out of Page' : '(×) Into the Page' }}
           </button>
         </div>
         <div class="button-group">
           <!-- Start Animation -->
-            <button
-              class="action-button start-button"
-              :class="{ active: animationMode === AnimationMode.start }"
-              @click="startAnimation"
-              :disabled="!(hasCharges && (animationMode === AnimationMode.stop || animationMode === AnimationMode.reset))"
-            >
-              Start Animation
-            </button>
+          <button class="action-button start-button" :class="{ active: animationMode === AnimationMode.start }"
+            @click="startAnimation"
+            :disabled="!(hasCharges && (animationMode === AnimationMode.stop || animationMode === AnimationMode.reset))">
+            Start Animation
+          </button>
 
-            <!-- Stop Animation -->
-            <button
-              class="action-button stop-button"
-              :class="{ active: animationMode === AnimationMode.stop }"
-              @click="stopAnimation"
-              :disabled="!(hasCharges && animationMode === AnimationMode.start)"
-            >
-              Stop Animation
-            </button>
+          <!-- Stop Animation -->
+          <button class="action-button stop-button" :class="{ active: animationMode === AnimationMode.stop }"
+            @click="stopAnimation" :disabled="!(hasCharges && animationMode === AnimationMode.start)">
+            Stop Animation
+          </button>
 
-            <!-- Reset Animation -->
-            <button
-              class="action-button reset-button"
-              :class="{ active: animationMode === AnimationMode.reset }"
-              @click="resetAnimation"
-              :disabled="!(hasCharges && animationMode === AnimationMode.stop && hasAnimationRun)"
-
-            >
-              Reset Animation
-            </button>
+          <!-- Reset Animation -->
+          <button class="action-button reset-button" :class="{ active: animationMode === AnimationMode.reset }"
+            @click="resetAnimation"
+            :disabled="!(hasCharges && animationMode === AnimationMode.stop && hasAnimationRun)">
+            Reset Animation
+          </button>
         </div>
       </template>
 
@@ -220,6 +209,7 @@ import { AnimationMode, useChargesStore, type SimulationMode } from '@/stores/ch
 import RangeSlider from './ui/RangeSlider.vue';
 import { CHARGE_MAGNITUDE_BOUNDS, MAGNETIC_FIELD_BOUNDS, VELOCITY_BOUNDS } from '@/consts';
 import { useSettingsStore } from '@/stores/settings'
+import { defineExpose } from 'vue';
 
 const chargesStore = useChargesStore();
 const velocityInputError = ref('');
@@ -227,6 +217,16 @@ const isSettingsModalOpen = ref(false);
 const isDarkMode = ref(false); // or pull this from your settings store if global
 
 const hasAnimationRun = ref(false);
+
+function highlightStartButton() {
+  const startButton = document.querySelector('.start-button');
+  if (startButton) {
+    startButton.classList.add('highlight');
+    setTimeout(() => {
+      startButton.classList.remove('highlight');
+    }, 2000);
+  }
+}
 
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value;
@@ -520,9 +520,31 @@ const toggleForceVisibility = () => {
   chargesStore.toggleShowForces();
 };
 
+defineExpose({
+  stopAnimation,
+  resetAnimation,
+  highlightStartButton
+});
 </script>
 
 <style scoped>
+.start-button.highlight {
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+    background-color: #4CAF50;
+  }
+
+  to {
+    transform: scale(1.1);
+    background-color: #66BB6A;
+  }
+}
+
+
 .controls-container {
   width: 300px;
   min-width: 300px;
@@ -644,6 +666,7 @@ const toggleForceVisibility = () => {
   background-color: #d5d5d5;
   color: #333;
 }
+
 .start-button:disabled,
 .stop-button:disabled,
 .reset-button:disabled {
@@ -674,6 +697,7 @@ const toggleForceVisibility = () => {
   opacity: 1 !important;
   cursor: not-allowed;
 }
+
 /* Stop button enabled – red */
 .stop-button:enabled {
   background-color: #e74c3c;

@@ -87,6 +87,24 @@ function releaseGraphics(graphic: PIXI.Graphics) {
   }
 }
 
+const emit = defineEmits(['chargeOffScreen']);
+
+function isChargeOffScreen(charge: Charge): boolean {
+  if (!app) return false;
+  const { x, y } = charge.position;
+  const { width, height } = app.view;
+  return x < -50 || x > width + 50 || y < -50 || y > height + 50;
+}
+
+function checkChargesOffScreen() {
+  const charges = Array.from(chargesStore.charges.values());
+  if (charges.some(isChargeOffScreen)) {
+    console.warn('Charge went off-screen. Emitting event to stop/reset animation.');
+    emit('chargeOffScreen');
+  }
+}
+
+
 function clearForceOperationLogs() {
   if (!DEBUG_FORCES) return;
   console.log(`[${performance.now().toFixed(2)}] Clearing force operation logs`);
@@ -798,6 +816,7 @@ onMounted(async () => {
   window.addEventListener('keydown', handleKeyDown);
 
   app.ticker.add(() => {
+    checkChargesOffScreen();
     updateChargeMotion();
   });
 

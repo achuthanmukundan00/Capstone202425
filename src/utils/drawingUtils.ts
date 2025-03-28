@@ -405,8 +405,8 @@ export function drawMagneticField(
   if (fieldStrength === 0) return;
 
   const direction = magneticField.z >= 0 ? 'out' : 'in';
-  const baseGridSize = FIELD_SPACING;
-  const gridSpacing = Math.max(10, baseGridSize - fieldStrength * 5);
+  const baseGridSize = 2.5*FIELD_SPACING;
+  const gridSpacing = Math.max(20, baseGridSize - fieldStrength * 4);
 
   for (let x = gridSpacing / 2; x < app.screen.width; x += gridSpacing) {
     for (let y = gridSpacing / 2; y < app.screen.height; y += gridSpacing) {
