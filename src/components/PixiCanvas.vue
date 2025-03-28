@@ -433,6 +433,7 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
 };
 
 const clearTrails = () => {
+  console.log('clearing trails');
   trailGraphicsMap.forEach(trailGraphic => {
     if (app) {
       app.stage.removeChild(trailGraphic);
@@ -461,6 +462,7 @@ const updateChargeMotion = () => {
       let trailGraphics = trailGraphicsMap.get(charge.id);
       if (!trailGraphics) {
         trailGraphics = getGraphics();
+        trailGraphics.visible = true;
         // Ensure the trail renders behind the charge
         trailGraphics.zIndex = 5;
         trailGraphicsMap.set(charge.id, trailGraphics);
