@@ -21,7 +21,7 @@ import {
   highlightForcesFromCharge
 } from '@/utils/drawingUtils';
 import { calculateMagneticForce, calculateElectricField } from '@/utils/mathUtils';
-import { ANIMATION_SPEED, FORCE_SCALING, FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH } from '@/consts';
+import { ANIMATION_SPEED, FORCE_SCALING, FIELD_SPACING, VECTOR_LENGTH_SCALE, MAX_VECTOR_LENGTH, MAX_GRAPHIC_POOL_SIZE } from '@/consts';
 import { getNetElectricFieldAtPoint } from '@/utils/mathUtils'
 import { useSettingsStore } from '@/stores/settings'
 import { ColorPalettes } from '@/utils/colorPalettes'
@@ -69,6 +69,42 @@ const forceOperations = new Map<string, {
 //   }
 // }
 
+const graphicsPool: PIXI.Graphics[] = [];
+
+function getGraphics(): PIXI.Graphics {
+  if (graphicsPool.length > 0) {
+    return graphicsPool.pop()!;
+  }
+  return new PIXI.Graphics(); // Create a new graphic if none are available
+}
+
+function releaseGraphics(graphic: PIXI.Graphics) {
+  graphic.clear();
+  graphic.visible = false;
+
+  if (graphicsPool.length < MAX_GRAPHIC_POOL_SIZE) {
+    graphicsPool.push(graphic);
+  }
+}
+
+const emit = defineEmits(['chargeOffScreen']);
+
+function isChargeOffScreen(charge: Charge): boolean {
+  if (!app) return false;
+  const { x, y } = charge.position;
+  const { width, height } = app.view;
+  return x < -50 || x > width + 50 || y < -50 || y > height + 50;
+}
+
+function checkChargesOffScreen() {
+  const charges = Array.from(chargesStore.charges.values());
+  if (charges.some(isChargeOffScreen)) {
+    console.warn('Charge went off-screen. Emitting event to stop/reset animation.');
+    emit('chargeOffScreen');
+  }
+}
+
+
 function clearForceOperationLogs() {
   if (!DEBUG_FORCES) return;
   console.log(`[${performance.now().toFixed(2)}] Clearing force operation logs`);
@@ -111,7 +147,7 @@ const trailGraphicsMap = new Map<string, PIXI.Graphics>(); // keep track of draw
 
 let app: PIXI.Application | null = null;
 let lastForceUpdateTime = 0;
-const FORCE_UPDATE_THROTTLE = 50; // Only update forces every 50ms during drag (was 100ms)
+const FORCE_UPDATE_THROTTLE = 100; // Only update forces every 50ms during drag (was 100ms)
 let isDragging = false;
 let needsForceUpdate = false;
 let isUpdatingForces = false; // Flag to prevent simultaneous force calculations
@@ -171,8 +207,8 @@ function updateElectricForcesImpl() {
   // If it's been less than our stability threshold, and we have the same number of charges,
   // we'll skip this update unless we're dragging or have an explicit force update request
   if (timeSinceLastUpdate < FORCE_STABILITY_THRESHOLD &&
-      chargesStore.charges.length === lastForceRenderState.charges.length &&
-      !isDragging && !needsForceUpdate) {
+    chargesStore.charges.length === lastForceRenderState.charges.length &&
+    !isDragging && !needsForceUpdate) {
 
     // Check if any charge positions have changed significantly
     const positionsChanged = chargesStore.charges.some((charge, index) => {
@@ -344,7 +380,24 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 };
 
+function isWithinViewport(position: { x: number, y: number }, buffer: number = 100): boolean {
+  if (!app) return false;
+  const screenWidth = app.screen.width;
+  const screenHeight = app.screen.height;
+  return (
+    position.x >= -buffer &&
+    position.x <= screenWidth + buffer &&
+    position.y >= -buffer &&
+    position.y <= screenHeight + buffer
+  );
+}
+
 const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
+  const positionSnapshot = { x: charge.position.x, y: charge.position.y };
+  if (!isWithinViewport(positionSnapshot)) {
+    return;
+  }
+
   // Initialize the trail array if it doesn't exist
   if (!charge.trail) {
     charge.trail = [];
@@ -355,7 +408,7 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
     charge.trailSampleCounter = 0;
   }
 
-  const minDistance = 25 * scaleFactor; // Minimum distance traveled before taking a sample
+  const minDistance = 60 * scaleFactor; // Minimum distance traveled before taking a sample
 
   // Calculate distance from last sampled position
   if (charge.trail.length === 0 ||
@@ -365,13 +418,12 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
     ) >= minDistance) {
 
     // Push a snapshot of the position
-    charge.trail.push({ x: charge.position.x, y: charge.position.y });
+    charge.trail.push(positionSnapshot);
   }
 
   // Clear the previous trail drawing
   trailGraphics.clear();
 
-  // Option 1: Draw small dots along the trail
   const dotRadius = 8 * scaleFactor;
   trailGraphics.beginFill(0xffffff, 0.7);
   for (const pos of charge.trail) {
@@ -381,10 +433,12 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
 };
 
 const clearTrails = () => {
+  console.log('clearing trails');
   trailGraphicsMap.forEach(trailGraphic => {
     if (app) {
       app.stage.removeChild(trailGraphic);
     }
+    releaseGraphics(trailGraphic);
   });
   trailGraphicsMap.clear();
 };
@@ -402,12 +456,13 @@ const updateChargeMotion = () => {
       const force = calculateMagneticForce(charge, chargesStore.magneticField);
       charge.velocity.direction.x += force.x * FORCE_SCALING;
       charge.velocity.direction.y += force.y * FORCE_SCALING;
-      charge.position.x += charge.velocity.direction.x * ANIMATION_SPEED;
-      charge.position.y += charge.velocity.direction.y * ANIMATION_SPEED;
+      charge.position.x += charge.velocity.magnitude * charge.velocity.direction.x * ANIMATION_SPEED;
+      charge.position.y += charge.velocity.magnitude * charge.velocity.direction.y * ANIMATION_SPEED;
 
       let trailGraphics = trailGraphicsMap.get(charge.id);
       if (!trailGraphics) {
-        trailGraphics = new PIXI.Graphics();
+        trailGraphics = getGraphics();
+        trailGraphics.visible = true;
         // Ensure the trail renders behind the charge
         trailGraphics.zIndex = 5;
         trailGraphicsMap.set(charge.id, trailGraphics);
@@ -675,7 +730,7 @@ onMounted(async () => {
               const now = performance.now();
               const timeSinceLastUpdate = now - lastForceRenderState.timestamp;
               const forceStabilityActive = timeSinceLastUpdate < FORCE_STABILITY_THRESHOLD &&
-                                           newCharges.length === lastForceRenderState.charges.length;
+                newCharges.length === lastForceRenderState.charges.length;
 
               if (!forceStabilityActive || needsForceUpdate) {
                 // Instead of directly updating forces here, schedule a debounced update
@@ -694,7 +749,7 @@ onMounted(async () => {
           }
 
           // Always update the charges on canvas
-      updateChargesOnCanvas(newCharges);
+          updateChargesOnCanvas(newCharges);
         } finally {
           isUpdatingForces = false;
         }
@@ -763,6 +818,7 @@ onMounted(async () => {
   window.addEventListener('keydown', handleKeyDown);
 
   app.ticker.add(() => {
+    checkChargesOffScreen();
     updateChargeMotion();
   });
 
@@ -785,7 +841,7 @@ const resize = () => {
   if (!app) return;
 
   // If letting Pixi handle density, we don't manually set resolution at all:
-    app.renderer.resize(window.innerWidth, window.innerHeight);
+  app.renderer.resize(window.innerWidth, window.innerHeight);
 
   if (chargesStore.mode === 'electric') {
     removeFields(app);
@@ -849,23 +905,23 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
   try {
     const scaleFactor = window.innerWidth < 600 ? 0.6 : 1.0;
 
-  // Remove graphics for charges that no longer exist
-  for (const [id, graphic] of chargesGraphics) {
-    if (!charges.find((charge) => charge.id === id)) {
-      app.stage.removeChild(graphic);
-      chargesGraphics.delete(id);
+    // Remove graphics for charges that no longer exist
+    for (const [id, graphic] of chargesGraphics) {
+      if (!charges.find((charge) => charge.id === id)) {
+        app.stage.removeChild(graphic);
+        chargesGraphics.delete(id);
+      }
     }
-  }
 
-  // Add or update graphics for current charges
-  charges.forEach((charge) => {
-    let graphic = chargesGraphics.get(charge.id);
-    if (!graphic) {
-      graphic = new PIXI.Graphics();
+    // Add or update graphics for current charges
+    charges.forEach((charge) => {
+      let graphic = chargesGraphics.get(charge.id);
+      if (!graphic) {
+        graphic = new PIXI.Graphics();
         // Set a high zIndex so that charges render on top of arrows
         graphic.zIndex = 10;
-      chargesGraphics.set(charge.id, graphic);
-      app?.stage.addChild(graphic);
+        chargesGraphics.set(charge.id, graphic);
+        app?.stage.addChild(graphic);
 
         // Configure interactivity for both PIXI v6 and v7 compatibility
         graphic.eventMode = 'static'; // PIXI v7 property
@@ -881,7 +937,7 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
           // Stop propagation to prevent stage from deselecting
           event.stopPropagation();
-        chargesStore.setSelectedCharge(charge.id);
+          chargesStore.setSelectedCharge(charge.id);
 
           // Also store data for drag handling
           graphic!.data = event.data;
@@ -890,13 +946,13 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
 
         // Drag handling events
         graphic
-        .on('pointerup', () => {
-          graphic!.dragging = false;
-          graphic!.data = null;
-        })
-        .on('pointerupoutside', () => {
-          graphic!.dragging = false;
-          graphic!.data = null;
+          .on('pointerup', () => {
+            graphic!.dragging = false;
+            graphic!.data = null;
+          })
+          .on('pointerupoutside', () => {
+            graphic!.dragging = false;
+            graphic!.data = null;
           });
 
         // Add hover handlers for force highlighting
@@ -963,12 +1019,12 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
           // Mark that we need an update when dragging stops
           needsForceUpdate = true;
         }
-    } else {
-      graphic.clear();
-    }
+      } else {
+        graphic.clear();
+      }
 
       const color = charge.polarity === 'positive' ? palette.value.chargePositive : palette.value.chargeNegative;
-    const polarity = charge.polarity === 'positive' ? "+" : "-";
+      const polarity = charge.polarity === 'positive' ? "+" : "-";
 
       // Draw the charge circle
       const radius = 24 * scaleFactor;
@@ -978,11 +1034,11 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
       graphic.endFill();
 
       // Set position
-    graphic.position.set(charge.position.x, charge.position.y);
+      graphic.position.set(charge.position.x, charge.position.y);
 
-    // Create or update the text label for the charge magnitude
-    let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
-    if (!text) {
+      // Create or update the text label for the charge magnitude
+      let text = graphic.getChildByName('chargeLabel') as PIXI.Text;
+      if (!text) {
         const labelText = `${polarity}${charge.magnitude}C`;
         text = new PIXI.Text(labelText, {
           fontFamily: settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins',
@@ -993,10 +1049,10 @@ const updateChargesOnCanvas = (charges: Charge[]) => {
         text.name = 'chargeLabel';
         text.anchor.set(0.5);
         text.position.set(0, 0);
-      text.name = 'chargeLabel';
-      graphic.addChild(text);
-    } else {
-      text.text = polarity + charge.magnitude.toString() + 'C';
+        text.name = 'chargeLabel';
+        graphic.addChild(text);
+      } else {
+        text.text = polarity + charge.magnitude.toString() + 'C';
         text.style.fontFamily = settingsStore.dyslexiaMode ? 'OpenDyslexic' : 'Poppins';
         text.style.fontSize = 16 * scaleFactor;
       }
