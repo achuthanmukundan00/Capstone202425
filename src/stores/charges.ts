@@ -133,6 +133,20 @@ export const useChargesStore = defineStore('charges', {
       }
     },
 
+    recalculateElectricForces() {
+      this.charges.forEach(charge => {
+        charge.electricForce.partialForces = [];
+        charge.electricForce.totalForce = { magnitude: 0, direction: { x: 0, y: 0 } };
+      });
+
+      if (this.mode === 'electric' && this.showForces) {
+        // Ensure forces are recalculated
+        setTimeout(() => {
+          this.charges = [...this.charges];
+        }, 50);
+      }
+    },
+
     // Switch between "electric" or "magnetic" mode
     setMode(mode: SimulationMode) {
       // If we're actually changing modes (not just re-setting the same mode)
@@ -147,15 +161,7 @@ export const useChargesStore = defineStore('charges', {
 
         // When returning to electric mode, ensure the UI is freshly updated
         if (mode === 'electric' && previousMode === 'magnetic') {
-          // Trigger reactivity by toggling and toggling back if forces are showing
-          if (this.showForces) {
-            // This is a hack to ensure reactive updates when needed
-            const currentShowForces = this.showForces;
-            this.showForces = !currentShowForces;
-            setTimeout(() => {
-              this.showForces = currentShowForces;
-            }, 0);
-          }
+          this.recalculateElectricForces();
         }
       }
     },

@@ -209,7 +209,6 @@ import { AnimationMode, useChargesStore, type SimulationMode } from '@/stores/ch
 import RangeSlider from './ui/RangeSlider.vue';
 import { CHARGE_MAGNITUDE_BOUNDS, MAGNETIC_FIELD_BOUNDS, VELOCITY_BOUNDS } from '@/consts';
 import { useSettingsStore } from '@/stores/settings'
-import { defineExpose } from 'vue';
 
 const chargesStore = useChargesStore();
 const velocityInputError = ref('');
@@ -461,6 +460,7 @@ const resetForm = () => {
 
 // Add mode setter
 const setMode = (newMode: SimulationMode) => {
+  chargesStore.resetAnimation();
   chargesStore.setMode(newMode);
 };
 
