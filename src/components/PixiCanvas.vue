@@ -454,8 +454,8 @@ const updateChargeMotion = () => {
   else {
     chargesStore.charges.forEach(charge => {
       const force = calculateMagneticForce(charge, chargesStore.magneticField);
-      charge.velocity.direction.x += force.x * FORCE_SCALING;
-      charge.velocity.direction.y += force.y * FORCE_SCALING;
+      charge.velocity.direction.x += -force.x * FORCE_SCALING;
+      charge.velocity.direction.y += -force.y * FORCE_SCALING;
       charge.position.x += charge.velocity.magnitude * charge.velocity.direction.x * ANIMATION_SPEED;
       charge.position.y += charge.velocity.magnitude * charge.velocity.direction.y * ANIMATION_SPEED;
 
