@@ -160,6 +160,19 @@ function detectChargeProximity() {
   }
 }
 
+function isWithinViewport(position: { x: number, y: number }, buffer: number = 100): boolean {
+  if (!app) return false;
+  const screenWidth = app.screen.width;
+  const screenHeight = app.screen.height;
+
+  return (
+    position.x >= -buffer &&
+    position.x <= screenWidth + buffer &&
+    position.y >= -buffer &&
+    position.y <= screenHeight + buffer
+  );
+}
+
 // Function to actually update the forces
 function updateElectricForcesImpl() {
   if (!app || isUpdatingForces || !chargesStore.showForces) return;
@@ -374,9 +387,12 @@ const updateChargeTrail = (charge: Charge, trailGraphics: PIXI.Graphics) => {
   // Option 1: Draw small dots along the trail
   const dotRadius = 8 * scaleFactor;
   trailGraphics.beginFill(0xffffff, 0.7);
+
   for (const pos of charge.trail) {
+  if (isWithinViewport(pos)) {
     trailGraphics.drawCircle(pos.x, pos.y, dotRadius);
   }
+}
   trailGraphics.endFill();
 };
 
