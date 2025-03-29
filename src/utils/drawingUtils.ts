@@ -19,7 +19,7 @@ import { createElectricFieldArrow, createMagneticFieldSymbol } from '@/utils/dra
 const MIN_ALPHA = 0.1
 const MAX_ALPHA = 1.0
 const LOG_SCALE_FACTOR = 2
-
+const ARROW_LENGTH_REDUCTION_FACTOR = 0.8; //Reduce the length of the total force arrow
 // Object pool for force vectors to avoid creating/destroying graphics objects
 // This significantly improves performance when redrawing forces frequently
 const forceVectorPool: PIXI.Graphics[] = [];
@@ -675,11 +675,12 @@ export function drawElectricForcesGrid(app: PIXI.Application, charges: Charge[])
 // Helper function to draw a force arrow
 function drawForceArrow(
   app: PIXI.Application,
-  position: {x: number, y: number},
-  force: {magnitude: number, direction: {x: number, y: number}},
+  position: { x: number, y: number },
+  force: { magnitude: number, direction: { x: number, y: number } },
   isTotal: boolean,
   chargeId: string,
-  sourceChargeId?: string
+  sourceChargeId?: string,
+  partialForces?: { x: number; y: number }[] // Add partial forces as an optional parameter
 ) {
   // Generate consistent ID for the arrow
   const arrowId = isTotal
@@ -702,14 +703,35 @@ function drawForceArrow(
 
   arrow.lineStyle(lineWidth, color, alpha);
 
-  // Calculate arrow length using logarithmic scaling
-  const magnitude = Math.max(0.001, force.magnitude); // Avoid log(0)
-  const logScaledMagnitude = Math.log(magnitude * 1e10 + 1) / Math.log(10);
-  const arrowLength = Math.min(FORCE_SCALE_FACTOR * logScaledMagnitude, 300); // Cap maximum length
+  // Calculate the resultant force if isTotal is true and there are more than 2 charges
+  let resultantForce = force; // Default to the provided force
+  if (isTotal && partialForces && partialForces.length > 2) {
+    // Sum the x and y components of all partial forces
+    const totalForce = partialForces.reduce(
+      (acc, partial) => {
+        acc.x += partial.x;
+        acc.y += partial.y;
+        return acc;
+      },
+      { x: 0, y: 0 }
+    );
+    
+    // Calculate the magnitude and direction of the resultant force
+    const magnitude = Math.sqrt(totalForce.x ** 2 + totalForce.y ** 2);
+    const direction = {
+      x: totalForce.x / magnitude,
+      y: totalForce.y / magnitude,
+    };
+
+    resultantForce = { magnitude, direction };
+  }
+
+  // Calculate arrow length
+  const arrowLength = resultantForce.magnitude * VECTOR_LENGTH_SCALE * ARROW_LENGTH_REDUCTION_FACTOR;
 
   // Calculate endpoint
-  const endX = position.x + force.direction.x * arrowLength;
-  const endY = position.y + force.direction.y * arrowLength;
+  const endX = position.x + resultantForce.direction.x * arrowLength;
+  const endY = position.y + resultantForce.direction.y * arrowLength;
 
   // Draw arrow line
   arrow.moveTo(position.x, position.y);
@@ -717,17 +739,14 @@ function drawForceArrow(
 
   // Draw arrowhead
   const angle = Math.atan2(endY - position.y, endX - position.x);
-  const arrowheadSize = isTotal ? ARROWHEAD_LENGTH * 1.2 : ARROWHEAD_LENGTH;
-
-  arrow.beginFill(color, alpha);
+  arrow.lineTo(
+    endX - ARROWHEAD_LENGTH * Math.cos(angle - Math.PI / 6),
+    endY - ARROWHEAD_LENGTH * Math.sin(angle - Math.PI / 6)
+  );
   arrow.moveTo(endX, endY);
   arrow.lineTo(
-    endX - arrowheadSize * Math.cos(angle - Math.PI / 6),
-    endY - arrowheadSize * Math.sin(angle - Math.PI / 6)
-  );
-  arrow.lineTo(
-    endX - arrowheadSize * Math.cos(angle + Math.PI / 6),
-    endY - arrowheadSize * Math.sin(angle + Math.PI / 6)
+    endX - ARROWHEAD_LENGTH * Math.cos(angle + Math.PI / 6),
+    endY - ARROWHEAD_LENGTH * Math.sin(angle + Math.PI / 6)
   );
   arrow.lineTo(endX, endY);
   arrow.endFill();
